@@ -11,7 +11,7 @@ play.html?src=scenarios/파일이름.json
 예시:
 
 ```
-https://우리학교.github.io/ar-escape/play.html?src=scenarios/마음의-방.json
+https://cleveranawim-source.github.io/ar-escape/play.html?src=scenarios/maum-room.json
 ```
 
 ## 참고

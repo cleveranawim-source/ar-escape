@@ -5,7 +5,12 @@
 
 앱 설치가 필요 없고, 빌드 도구도 쓰지 않습니다. 정적 파일 그대로 동작합니다.
 
-## 실행
+**바로 써 보기 → https://cleveranawim-source.github.io/ar-escape/**
+
+HTTPS 로 서비스되므로 학생 태블릿에서 카메라가 바로 열립니다.
+학생에게는 이 주소만 알려 주면 됩니다.
+
+## 실행 (내 컴퓨터에서)
 
 ```bash
 ./serve.sh          # http://localhost:8000
@@ -14,7 +19,8 @@
 
 - 카메라는 **HTTPS 또는 localhost** 에서만 열립니다. 파일을 더블클릭해 여는 방식(`file://`)은 동작하지 않습니다.
 - 같은 와이파이의 태블릿에서 카메라까지 쓰려면 HTTPS 주소가 필요합니다.
-  GitHub Pages 로 올리거나, `cloudflared tunnel --url http://localhost:8000` 같은 터널을 쓰세요.
+  위의 GitHub Pages 주소를 쓰거나, `cloudflared tunnel --url http://localhost:8000` 같은 터널을 쓰세요.
+- `main` 에 push 하면 GitHub Pages 가 1~2분 안에 자동으로 갱신됩니다.
 
 ## 화면
 
