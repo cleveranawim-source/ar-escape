@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0d16">
+<title>AR 방탈출 — 인쇄용 마커 만들기</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="app-bg">
+
+<header class="topbar no-print">
+  <a class="brand" href="index.html" style="color:inherit;text-decoration:none">
+    <span class="dot"></span> AR 방탈출 <span class="badge gray">마커 만들기</span>
+  </a>
+  <div class="row">
+    <button class="btn btn-sm" data-print>🖨 인쇄</button>
+    <a class="btn btn-sm btn-primary" href="admin.html">제작 스튜디오 →</a>
+  </div>
+</header>
+
+<main class="studio">
+  <div class="card no-print">
+    <div class="card-hd">
+      <h2 style="margin:0">인식이 잘 되는 마커 만들기</h2>
+    </div>
+    <p class="muted small">
+      AR 이미지 인식은 <b>무늬가 복잡하고 대비가 높은</b> 그림일수록 잘 됩니다.
+      아래에서 마커를 만들어 인쇄한 뒤, 같은 PNG 파일을 제작 스튜디오에 업로드하세요.
+      물론 교과서 삽화·사진 등 <b>직접 준비한 이미지</b>를 써도 됩니다.
+    </p>
+
+    <div class="grid-2">
+      <label class="field">
+        <span class="lb">마커 장수 (1~12)</span>
+        <input type="number" id="f-count" min="1" max="12" value="6">
+      </label>
+      <label class="field">
+        <span class="lb">공통 라벨 (오른쪽 아래에 표시)</span>
+        <input type="text" id="f-sub" placeholder="예: 3학년 과학실">
+      </label>
+    </div>
+    <label class="field">
+      <span class="lb">각 마커 번호/이름 — 쉼표로 구분 (비우면 1,2,3…)</span>
+      <input type="text" id="f-labels" placeholder="예: A, B, C, D, E, F">
+    </label>
+
+    <div class="row row-wrap">
+      <button class="btn" id="btn-reroll">🎲 무늬 새로 만들기</button>
+      <button class="btn btn-primary" id="btn-all">⬇ 전체 PNG 저장</button>
+      <button class="btn btn-ghost" data-print>🖨 인쇄하기</button>
+    </div>
+
+    <hr class="hr">
+    <div class="check-list">
+      <div class="check-item ok">
+        ✅ <span><b>인쇄 팁</b> — A4에 2장씩, 무광 용지 권장. 코팅지는 조명이 반사되어 인식이 어려워집니다.</span>
+      </div>
+      <div class="check-item warn">
+        ⚠️ <span><b>부착 팁</b> — 벽이나 책상에 <b>평평하게</b> 붙이세요. 구겨지거나 접히면 인식률이 크게 떨어집니다.</span>
+      </div>
+      <div class="check-item warn">
+        ⚠️ <span><b>조명</b> — 너무 어둡거나 마커에 직접 조명이 반사되는 위치는 피하세요.</span>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="no-print" style="margin-top:26px">미리보기</h3>
+  <div class="marker-grid" id="marker-grid"></div>
+</main>
+
+<div id="toast-host"></div>
+<script type="module" src="js/markers.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

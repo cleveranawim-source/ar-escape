@@ -1,0 +1,140 @@
+/* ============================================================
+   교사용 제작 스튜디오
+   ============================================================ */
+
+.studio { max-width: 1180px; margin: 0 auto; padding: 20px 18px 90px; }
+
+.layout { display: grid; grid-template-columns: 268px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+/* ---------- 사이드바 ---------- */
+.side { position: sticky; top: 74px; }
+@media (max-width: 900px) { .side { position: static; } }
+
+.sc-list { display: grid; gap: 7px; margin-top: 12px; }
+.sc-item {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  border-radius: var(--r); padding: 11px 12px; cursor: pointer;
+  font-family: inherit; color: var(--txt); transition: .15s;
+}
+.sc-item:hover { border-color: var(--neon-dim); }
+.sc-item.active { border-color: var(--neon); background: rgba(67, 232, 216, .08); }
+.sc-item .t { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-item .s { font-size: 11px; color: var(--txt-3); }
+
+/* ---------- 단서 카드 ---------- */
+.tgt-list { display: grid; gap: 12px; }
+
+.tgt {
+  border: 1px solid var(--line-soft); border-radius: var(--r-lg);
+  background: var(--bg-2); overflow: hidden; transition: border-color .15s;
+}
+.tgt.open { border-color: var(--neon-dim); }
+
+.tgt-hd { display: flex; align-items: center; gap: 13px; padding: 12px 14px; cursor: pointer; }
+.tgt-hd:hover { background: rgba(255, 255, 255, .022); }
+
+.tgt-thumb {
+  width: 62px; height: 62px; flex: none; border-radius: 11px; object-fit: cover;
+  background: #fff; border: 1px solid var(--line);
+}
+.tgt-thumb.empty { display: grid; place-items: center; background: var(--panel-2); font-size: 24px; color: var(--txt-3); }
+
+.tgt-info { flex: 1; min-width: 0; }
+.tgt-name { font-weight: 800; font-size: 15px; margin-bottom: 3px; }
+.tgt-sub { font-size: 12px; color: var(--txt-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tgt-body { padding: 4px 14px 16px; border-top: 1px solid var(--line-soft); }
+.tgt-body[hidden] { display: none; }
+
+.tgt-actions { display: flex; gap: 5px; flex: none; }
+
+/* 마커 점수 */
+.score-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid;
+}
+.score-pill.good { color: var(--ok); border-color: rgba(74, 222, 128, .4); background: rgba(74, 222, 128, .1); }
+.score-pill.ok { color: var(--neon); border-color: rgba(67, 232, 216, .4); background: rgba(67, 232, 216, .1); }
+.score-pill.weak { color: var(--gold); border-color: rgba(255, 201, 77, .4); background: rgba(255, 201, 77, .1); }
+.score-pill.bad { color: var(--danger); border-color: rgba(255, 95, 109, .4); background: rgba(255, 95, 109, .1); }
+
+/* ---------- 드롭존 ---------- */
+.drop {
+  border: 2px dashed var(--line); border-radius: var(--r);
+  padding: 22px 16px; text-align: center; cursor: pointer;
+  color: var(--txt-2); font-size: 14px; transition: .15s; background: var(--panel);
+}
+.drop:hover, .drop.over { border-color: var(--neon); color: var(--neon); background: rgba(67, 232, 216, .05); }
+
+/* ---------- 보기 편집 ---------- */
+.choice-edit { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.choice-edit input[type=radio] { width: 19px; height: 19px; flex: none; accent-color: var(--neon); cursor: pointer; }
+.choice-edit .idx { width: 20px; text-align: center; font-weight: 800; color: var(--txt-3); font-size: 13px; flex: none; }
+
+/* ---------- 이모지/색 선택 ---------- */
+.picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.pick {
+  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  border: 1.5px solid var(--line); background: var(--bg-2); cursor: pointer;
+  font-size: 19px; transition: .13s;
+}
+.pick:hover { border-color: var(--neon-dim); transform: translateY(-1px); }
+.pick.on { border-color: var(--neon); background: rgba(67, 232, 216, .12); }
+.pick.color { border-width: 2px; }
+.pick.color.on { box-shadow: 0 0 0 3px rgba(255, 255, 255, .12); }
+
+/* ---------- 미리보기 ---------- */
+.card-preview {
+  width: 100%; border-radius: var(--r); display: block;
+  background: linear-gradient(135deg, #1a2233, #0c1120);
+  border: 1px solid var(--line-soft);
+}
+
+/* ---------- 검사 결과 ---------- */
+.check-list { display: grid; gap: 6px; margin-top: 10px; }
+.check-item {
+  display: flex; gap: 9px; align-items: flex-start;
+  font-size: 13.5px; padding: 9px 12px; border-radius: 10px; line-height: 1.5;
+}
+.check-item.err { background: rgba(255, 95, 109, .09); color: #ffc0c6; border: 1px solid rgba(255, 95, 109, .22); }
+.check-item.warn { background: rgba(255, 201, 77, .08); color: #ffe4a8; border: 1px solid rgba(255, 201, 77, .22); }
+.check-item.ok { background: rgba(74, 222, 128, .08); color: #b6f2cc; border: 1px solid rgba(74, 222, 128, .22); }
+
+/* ---------- 컴파일 진행 ---------- */
+.compile-box { text-align: center; padding: 8px 0; }
+.compile-pct { font-size: 40px; font-weight: 900; font-family: var(--mono); color: var(--neon); line-height: 1.15; word-break: keep-all; }
+
+/* ---------- 배포 ---------- */
+.link-box {
+  display: flex; gap: 8px; align-items: center;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 9px 9px 9px 13px;
+}
+.link-box code { flex: 1; min-width: 0; font-size: 12.5px; overflow-x: auto; white-space: nowrap; color: var(--txt-2); }
+
+/* ---------- 인쇄 시트 ---------- */
+.marker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.marker-item { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--r); padding: 12px; }
+.marker-item canvas { width: 100%; height: auto; display: block; border-radius: 8px; background: #fff; }
+
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body { background: #fff !important; }
+  .no-print { display: none !important; }
+  .studio { padding: 0 !important; }
+
+  /* A4 한 장에 마커 2장. 인식률이 중요하므로 최대한 크게 뽑고,
+     페이지 경계에서 잘리지 않도록 2장마다 페이지를 끊는다. */
+  .marker-grid { display: block; }
+  .marker-item {
+    border: none; background: none; padding: 0; margin: 0 0 8mm;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .marker-item canvas { width: 100%; border-radius: 0; }
+  .marker-item .cap { color: #000 !important; }
+  .marker-item:nth-child(2n) { break-after: page; page-break-after: always; }
+  .marker-item:last-child { break-after: auto; page-break-after: auto; }
+}

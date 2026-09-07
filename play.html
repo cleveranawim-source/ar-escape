@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0d16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AR 방탈출 — 플레이</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/play.css">
+</head>
+<body>
+
+<!-- AR 씬이 주입되는 곳 -->
+<div id="ar-root"></div>
+
+<!-- 조준 가이드 -->
+<div class="reticle" id="reticle" hidden><span></span><span></span><span></span><span></span></div>
+
+<!-- 플레이 HUD -->
+<div id="hud" hidden>
+  <div class="hud-top">
+    <div class="hud-timer" id="timer">00:00</div>
+    <div class="hud-progress">
+      <div class="lbl" id="progress-label">0 / 0 해제</div>
+      <div class="bar"><i id="progress-bar"></i></div>
+    </div>
+    <button class="icon-btn" id="btn-keys" title="열쇠 보관함" aria-label="열쇠 보관함">🗝️</button>
+    <button class="icon-btn" id="btn-final" title="최종 자물쇠" aria-label="최종 자물쇠">🔓</button>
+    <button class="icon-btn" id="btn-menu" title="메뉴" aria-label="메뉴">⋯</button>
+  </div>
+
+  <div class="scan-hint" id="scan-hint">
+    <b>단서 이미지</b>를 화면 가운데에 비추세요.<br>
+    <span class="tiny dim">전체가 화면에 들어오도록, 30cm 정도 거리에서</span>
+  </div>
+</div>
+
+<!-- 문제 시트 -->
+<div id="sheet" role="dialog" aria-live="polite"></div>
+
+<!-- 로딩 -->
+<section class="screen" id="screen-load">
+  <div class="screen-inner center">
+    <div class="brand" style="justify-content:center"><span class="dot"></span> AR 방탈출</div>
+    <p class="muted" id="load-msg" style="margin-top:18px">시나리오를 불러오는 중…</p>
+    <div class="bar" style="max-width:260px;margin:0 auto"><i id="load-bar" style="width:30%"></i></div>
+    <div id="load-actions" class="stack" style="margin-top:22px"></div>
+  </div>
+</section>
+
+<!-- 시작 -->
+<section class="screen" id="screen-start" hidden>
+  <div class="screen-inner">
+    <div class="hero-kicker">Augmented Reality Escape</div>
+    <h1 class="hero-title" id="s-title">방탈출</h1>
+    <div class="meta-row" id="s-meta"></div>
+    <div class="story" id="s-story"></div>
+
+    <label class="field">
+      <span class="lb">모둠 이름</span>
+      <input type="text" id="s-team" placeholder="예: 3모둠 탐험대" maxlength="20" autocomplete="off">
+    </label>
+
+    <button class="btn btn-primary btn-lg btn-block" id="s-go">카메라 켜고 시작하기</button>
+    <button class="btn btn-ghost btn-block btn-sm" id="s-sim" style="margin-top:10px">카메라 없이 연습 모드로 하기</button>
+    <div id="s-resume" style="margin-top:12px"></div>
+
+    <p class="tiny dim center" style="margin-top:22px">
+      카메라 권한이 필요합니다 · HTTPS 또는 localhost 에서만 동작합니다
+    </p>
+  </div>
+</section>
+
+<!-- 연습(시뮬레이션) 모드 -->
+<section class="screen" id="screen-sim" hidden>
+  <div class="screen-inner" style="width:min(720px,100%)">
+    <div class="row spread" style="margin-bottom:6px">
+      <h2 style="margin:0">연습 모드</h2>
+      <button class="btn btn-sm btn-ghost" id="sim-exit">나가기</button>
+    </div>
+    <p class="muted small">카메라 대신 아래 단서를 눌러 AR 인식을 흉내 냅니다. 문제와 정답 흐름을 그대로 확인할 수 있어요.</p>
+    <div class="row spread" style="margin:14px 0">
+      <div class="mono" id="sim-timer" style="font-size:20px;font-weight:800">00:00</div>
+      <div class="row">
+        <button class="btn btn-sm" id="sim-keys">🗝️ 열쇠</button>
+        <button class="btn btn-sm btn-gold" id="sim-final">🔓 최종 자물쇠</button>
+      </div>
+    </div>
+    <div class="bar" style="margin-bottom:16px"><i id="sim-bar"></i></div>
+    <div class="sim-grid" id="sim-grid"></div>
+  </div>
+</section>
+
+<!-- 결과 -->
+<section class="screen" id="screen-result" hidden>
+  <div class="screen-inner" id="result-body"></div>
+</section>
+
+<canvas id="confetti" hidden></canvas>
+<div id="toast-host"></div>
+
+<script type="module" src="js/play.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
