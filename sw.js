@@ -13,16 +13,16 @@
    파일을 배포한 뒤 캐시를 강제로 비우려면 VERSION 을 올린다.
    ============================================================ */
 
-const VERSION = 'ar-escape-v1';
+const VERSION = 'ar-escape-v2';
 
 const SHELL = [
   './',
-  './index.html', './play.html', './admin.html', './markers.html',
+  './index.html', './play.html', './admin.html', './markers.html', './lab.html',
   './css/base.css', './css/play.css', './css/admin.css',
   './js/util.js', './js/store.js', './js/model.js',
   './js/ar.js', './js/arcard.js', './js/demo.js',
   './js/play.js', './js/admin.js',
-  './js/markers.js', './js/markers-draw.js',
+  './js/markers.js', './js/markers-draw.js', './js/lab.js',
 ];
 
 self.addEventListener('install', e => {

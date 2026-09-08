@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0d16">
+<title>AR 방탈출 — 실물 인식 테스트</title>
+<meta name="description" content="학교에 있는 실제 사물이 AR 단서로 쓸 만한지 태블릿으로 직접 재 봅니다.">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/admin.css">
+<style>
+  /* AR 실행 중 배경 투명 — MindAR 이 카메라 <video> 를 z-index:-2 로 깔기 때문 */
+  html.ar-on, html.ar-on body,
+  html.a-fullscreen.ar-on body { background: transparent !important; }
+  html.ar-on .studio, html.ar-on .topbar { display: none; }
+
+  #ar-root { position: fixed; inset: 0; z-index: 0; }
+  #ar-root a-scene, #ar-root .a-canvas {
+    position: absolute !important; inset: 0 !important;
+    width: 100% !important; height: 100% !important;
+  }
+
+  /* ---------- 측정 오버레이 ---------- */
+  #probe { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+           padding: calc(12px + var(--safe-t)) 14px calc(14px + var(--safe-b)); pointer-events: none; }
+  #probe > * { pointer-events: auto; }
+  #probe[hidden] { display: none; }
+
+  .probe-top { display: flex; gap: 8px; align-items: center;
+               background: rgba(10,13,22,.82); backdrop-filter: blur(10px);
+               border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
+  .probe-top select { flex: 1; min-width: 0; }
+
+  .live-dot { width: 13px; height: 13px; border-radius: 50%; flex: none;
+              background: var(--txt-3); transition: .15s; }
+  .live-dot.on { background: var(--ok); box-shadow: 0 0 14px var(--ok); }
+
+  .pose-card { margin-top: auto; background: rgba(10,13,22,.86); backdrop-filter: blur(10px);
+               border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; }
+  .pose-step { font-size: 12px; letter-spacing: .16em; font-weight: 800; color: var(--neon); }
+  .pose-name { font-size: 22px; font-weight: 900; margin: 4px 0 2px; }
+  .pose-desc { font-size: 13px; color: var(--txt-2); line-height: 1.55; }
+
+  .gauge { display: flex; gap: 10px; margin: 12px 0; }
+  .gauge div { flex: 1; background: var(--bg-2); border: 1px solid var(--line-soft);
+               border-radius: var(--r-sm); padding: 8px; text-align: center; }
+  .gauge .v { font-family: var(--mono); font-size: 19px; font-weight: 900; }
+  .gauge .k { font-size: 10.5px; color: var(--txt-3); margin-top: 2px; }
+
+  /* ---------- 후보 사진 ---------- */
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .shot { background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: var(--r); overflow: hidden; }
+  .shot img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+  .shot .meta { padding: 9px 10px; display: grid; gap: 6px; }
+  .shot .nm { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- 판정표 ---------- */
+  .verdict { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .verdict th, .verdict td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--line-soft); }
+  .verdict th { font-size: 11px; color: var(--txt-3); font-weight: 700; }
+  .verdict td.nm { text-align: left; font-weight: 700; }
+  .v-good { color: var(--ok); font-weight: 800; }
+  .v-mid  { color: var(--gold); font-weight: 800; }
+  .v-bad  { color: var(--danger); font-weight: 800; }
+</style>
+</head>
+<body class="app-bg">
+
+<header class="topbar">
+  <a class="brand" href="index.html" style="color:inherit;text-decoration:none">
+    <span class="dot"></span> AR 방탈출 <span class="badge gray">실물 인식 테스트</span>
+  </a>
+  <div class="row">
+    <a class="btn btn-sm btn-ghost" href="markers.html">🖨 마커 만들기</a>
+    <a class="btn btn-sm btn-primary" href="admin.html">제작 스튜디오 →</a>
+  </div>
+</header>
+
+<main class="studio" id="page">
+
+  <div class="card">
+    <div class="card-hd"><h2 style="margin:0">학교에 있는 물건이 AR 단서로 쓸 만한가?</h2></div>
+    <p class="muted small">
+      인쇄한 마커 대신 <b>학교에 원래 있는 것</b>을 그대로 단서로 쓸 수 있는지 직접 재 보는 화면입니다.
+      후보를 사진으로 올리고 → 컴파일하고 → <b>그 물건 앞에 가서</b> 태블릿으로 비추면,
+      자세별로 얼마나 안정적으로 인식되는지 숫자로 나옵니다.
+    </p>
+
+    <hr class="hr">
+    <h4 style="font-size:14px;margin-bottom:2px">무엇을 찍어야 하나</h4>
+    <div class="check-list">
+      <div class="check-item ok">✅ <span><b>평평한 것</b> — 게시판 포스터, 학급 시간표, 액자, 안내 표지판, 학생 작품, 교과서 표지, 복도 안내도</span></div>
+      <div class="check-item ok">✅ <span><b>무늬가 복잡한 것</b> — 글자·그림이 빽빽할수록 좋습니다. 단색 벽, 민무늬 문은 인식되지 않습니다.</span></div>
+      <div class="check-item warn">⚠️ <span><b>입체물은 대체로 실패합니다</b> — 화분·소화기·의자처럼 튀어나온 물건은 각도가 바뀌면 특징점이 어긋납니다.</span></div>
+      <div class="check-item warn">⚠️ <span><b>유리·코팅면은 반사</b> — 액자 유리, 코팅 게시물은 조명이 반사되어 놓치기 쉽습니다.</span></div>
+      <div class="check-item warn">⚠️ <span><b>자주 바뀌는 것은 피하세요</b> — 칠판 판서, 교체되는 게시물은 다음 주에 인식되지 않습니다.</span></div>
+      <div class="check-item ok">✅ <span><b>찍는 법</b> — 정면에서, 대상이 화면을 꽉 채우게, 밝은 곳에서. 그림자와 손가락이 들어가지 않게.</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">
+      <h3>① 후보 사진 올리기</h3>
+      <span class="tiny dim" id="shot-count"></span>
+    </div>
+    <div class="shots" id="shots"></div>
+    <div style="margin-top:14px">
+      <div class="drop" id="drop">
+        <div style="font-size:26px;margin-bottom:4px">📷</div>
+        <div style="font-weight:700">후보 사진 추가</div>
+        <div class="tiny dim" style="margin-top:3px">클릭하거나 사진을 끌어다 놓으세요 · 한 번에 여러 장 · 3~5장 권장</div>
+      </div>
+    </div>
+    <p class="tiny dim" style="margin-top:10px">
+      적합도 점수는 사진만 보고 계산한 <b>예상치</b>입니다. 실제로 되는지는 아래에서 재 봐야 합니다.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">
+      <h3>② 컴파일</h3>
+      <span class="badge gray" id="compile-badge">대기</span>
+    </div>
+    <p class="muted small">올린 사진을 카메라가 알아볼 수 있는 형태로 변환합니다.</p>
+    <div class="bar" style="margin:10px 0"><i id="compile-bar"></i></div>
+    <p class="tiny dim center" id="compile-msg" style="margin:0 0 10px">사진을 먼저 올리세요.</p>
+    <button class="btn btn-primary btn-block btn-lg" id="btn-compile" disabled>⚡ 컴파일하기</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><h3>③ 현장에서 재 보기</h3></div>
+    <p class="muted small">
+      사진을 찍은 <b>그 물건 앞으로 가서</b> 카메라를 켜세요.
+      안내에 따라 자세를 바꿔 가며 비추면 자세별 인식률이 기록됩니다.
+    </p>
+    <button class="btn btn-primary btn-block btn-lg" id="btn-probe" disabled style="margin-top:8px">📷 카메라 켜고 측정 시작</button>
+    <p class="tiny dim center" style="margin:8px 0 0">HTTPS 또는 localhost 에서만 카메라가 열립니다.</p>
+  </div>
+
+  <div class="card" id="result-card" hidden>
+    <div class="card-hd"><h3>④ 판정</h3></div>
+    <div style="overflow-x:auto"><table class="verdict" id="verdict"></table></div>
+    <div class="check-list" id="verdict-notes" style="margin-top:14px"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn btn-sm" id="btn-copy">📋 결과 복사</button>
+      <button class="btn btn-sm btn-ghost" id="btn-reset">기록 지우기</button>
+    </div>
+  </div>
+
+</main>
+
+<div id="ar-root"></div>
+
+<!-- 측정 오버레이 -->
+<div id="probe" hidden>
+  <div class="probe-top">
+    <span class="live-dot" id="live-dot"></span>
+    <select id="probe-target" aria-label="측정할 단서"></select>
+    <button class="btn btn-sm btn-danger" id="probe-exit">종료</button>
+  </div>
+
+  <div class="pose-card">
+    <div class="pose-step" id="pose-step">자세 1 / 5</div>
+    <div class="pose-name" id="pose-name">정면 · 50cm</div>
+    <div class="pose-desc" id="pose-desc">대상 정면에서 팔 길이만큼 떨어져 화면을 꽉 채우세요.</div>
+
+    <div class="gauge">
+      <div><div class="v" id="g-ratio">—</div><div class="k">인식 유지율</div></div>
+      <div><div class="v" id="g-lost">0</div><div class="k">놓친 횟수</div></div>
+      <div><div class="v" id="g-first">—</div><div class="k">첫 인식</div></div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="pose-next">이 자세 완료 · 다음 →</button>
+  </div>
+</div>
+
+<div id="toast-host"></div>
+<script type="module" src="js/lab.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
