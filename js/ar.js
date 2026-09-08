@@ -280,13 +280,27 @@ export class ArEngine {
 
     try {
       await system.start();
+
+      // .mind 가 깨져 있으면 MindAR 은 조용히 실패한다.
+      // 내부 msgpack 디코더가 던진 예외는 밖으로 나오지 않고,
+      // 카메라만 켜진 채 markerDimensions 가 끝내 채워지지 않는다
+      // → 학생 화면에서는 "아무리 비춰도 반응이 없는" 상태가 된다.
+      const loaded = await waitUntil(
+        () => (system.controller?.markerDimensions?.length ?? 0) > 0, 8000,
+      );
+      if (!loaded) {
+        throw new Error('AR 타겟 데이터를 읽지 못했습니다. 제작 스튜디오에서 다시 컴파일해 주세요.');
+      }
+
       this.running = true;
       // 카메라 영상이 배경에 가려지지 않도록 (play.css 의 .ar-on 규칙)
       document.documentElement.classList.add('ar-on');
       this.opts.onReady?.();
     } catch (err) {
-      this.opts.onError?.(normalizeCameraError(err));
-      throw err;
+      try { system.stop?.(); } catch { /* 무시 */ }
+      // onError 는 씬이 뜬 뒤 비동기로 터지는 arError 전용이다.
+      // 여기서까지 부르면 start() 를 await 하는 호출부와 겹쳐 안내가 두 번 뜬다.
+      throw normalizeCameraError(err);
     }
   }
 
@@ -314,6 +328,16 @@ export class ArEngine {
     this._canvases.clear();
     this._textures.clear();
   }
+}
+
+function waitUntil(pred, ms, step = 150) {
+  return new Promise(res => {
+    const t0 = Date.now();
+    const id = setInterval(() => {
+      if (pred()) { clearInterval(id); res(true); }
+      else if (Date.now() - t0 > ms) { clearInterval(id); res(false); }
+    }, step);
+  });
 }
 
 export function normalizeCameraError(err) {
@@ -350,8 +374,16 @@ export async function compileTargets(images, onProgress = () => {}) {
   }
   const compiler = new MINDAR.IMAGE.Compiler();
   await compiler.compileImageTargets(images, pct => onProgress(Math.max(0, Math.min(100, pct))));
-  const buffer = await compiler.exportData();
-  return buffer instanceof ArrayBuffer ? buffer : buffer.buffer ?? buffer;
+  const data = await compiler.exportData();
+
+  // exportData() 는 Uint8Array 를 돌려주는데, 그 뒤에 붙은 backing ArrayBuffer 가
+  // 실제 데이터보다 훨씬 크다(내부 버퍼를 넉넉히 잡아 두고 subarray 로 잘라 주기 때문).
+  // 여기서 .buffer 를 그대로 넘기면 뒤의 여유 바이트까지 딸려 가고,
+  // MindAR 의 msgpack 디코더가 "Extra N byte(s) found" 로 거부해서
+  // 타겟이 끝내 로드되지 않는다 → 카메라만 켜지고 아무것도 인식되지 않는다.
+  if (data instanceof ArrayBuffer) return data;
+  if (ArrayBuffer.isView(data)) return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+  return data;
 }
 
 /** 외부 스크립트를 한 번만 로드 */
