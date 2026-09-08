@@ -14,7 +14,8 @@
   html.a-fullscreen.ar-on body { background: transparent !important; }
   html.ar-on .studio, html.ar-on .topbar { display: none; }
 
-  #ar-root { position: fixed; inset: 0; z-index: 0; }
+  /* AR 이 켜지기 전에는 이 빈 레이어가 페이지 전체를 덮고 클릭을 삼킨다 → 통과시킨다 */
+  #ar-root { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
   #ar-root a-scene, #ar-root .a-canvas {
     position: absolute !important; inset: 0 !important;
     width: 100% !important; height: 100% !important;

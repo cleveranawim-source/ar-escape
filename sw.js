@@ -13,7 +13,7 @@
    파일을 배포한 뒤 캐시를 강제로 비우려면 VERSION 을 올린다.
    ============================================================ */
 
-const VERSION = 'ar-escape-v2';
+const VERSION = 'ar-escape-v4';
 
 const SHELL = [
   './',
@@ -68,8 +68,11 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // GitHub Pages 는 max-age=600 을 붙인다. 배포 직후 브라우저 HTTP 캐시에 옛 모듈과
+  // 새 모듈이 섞이면 import 가 깨진다(예: 새 demo.js 가 옛 arcard.js 의 export 를 찾음).
+  // 서버에 재검증(no-cache)해서 앱 파일은 항상 한 세트로 맞춘다.
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' })
       .then(res => keep(req, res))
       .catch(() => caches.match(req).then(hit => hit || offline())),
   );

@@ -19,7 +19,41 @@ function registerComponents() {
   const A = AFRAME();
   const THREE = window.THREE;
 
-  /* ---- 캔버스 텍스처 카드 ---- */
+  /* 사진 표면에서 시청자 쪽으로 솟아오르는 공통 연출.
+     age = 인식된 뒤 지난 초. 0.6초 동안 살짝 넘치게(ease-out-back) 튀어나온 뒤 떠 있는다.
+     타겟 좌표계에서 +Z 가 사진 밖(카메라 쪽)이다. */
+  function popOut(obj, mesh, age, rise) {
+    const p = Math.min(1, age / 0.6);
+    const c1 = 1.70158;
+    const back = 1 + (c1 + 1) * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2);
+    const s = 0.25 + 0.75 * back;
+    mesh.scale.set(s, s, s);
+    mesh.material.opacity = Math.min(1, age / 0.25);
+    const idle = p >= 1 ? age - 0.6 : 0;
+    obj.position.z = 0.02 + rise * back + Math.sin(idle * 1.6) * 0.012;
+    obj.position.y = Math.sin(idle * 1.3) * 0.015;
+    obj.rotation.z = Math.sin(idle * 0.8) * 0.01;
+  }
+
+  /* 부모(mindar-image-target)의 인식 이벤트에 맞춰 연출을 처음부터 다시 튼다.
+     컴포넌트는 씬이 뜰 때 init 되므로, 이걸 안 하면 애니메이션이 아무도 안 보는
+     사이에 끝나 버려 학생 눈에는 항상 "이미 다 나와 있는" 상태로만 보인다. */
+  function followTarget(comp) {
+    comp.t0 = null;
+    comp.active = false;
+    const target = comp.el.parentEl;
+    comp._onFound = () => { comp.t0 = null; comp.active = true; };
+    comp._onLost = () => { comp.active = false; };
+    target?.addEventListener('targetFound', comp._onFound);
+    target?.addEventListener('targetLost', comp._onLost);
+  }
+  function unfollowTarget(comp) {
+    const target = comp.el.parentEl;
+    target?.removeEventListener('targetFound', comp._onFound);
+    target?.removeEventListener('targetLost', comp._onLost);
+  }
+
+  /* ---- 캔버스 텍스처 카드 (튀어나올 이미지가 없을 때 대신 솟아오른다) ---- */
   A.registerComponent('ar-card', {
     schema: {
       engine: { type: 'string' },
@@ -44,34 +78,22 @@ function registerComponents() {
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false }),
       );
       mesh.renderOrder = 10;
+      mesh.scale.set(0.25, 0.25, 0.25);
+      mesh.material.opacity = 0;
       this.el.setObject3D('mesh', mesh);
 
       this.tex = tex;
       this.mesh = mesh;
-      this.t0 = null;
       engine._textures.set(this.data.index, tex);
-
-      // 등장 애니메이션 시작점
-      mesh.scale.set(0.6, 0.6, 0.6);
-      mesh.material.opacity = 0;
+      followTarget(this);
     },
     tick(time) {
-      if (!this.mesh) return;
+      if (!this.mesh || !this.active) return;
       if (this.t0 === null) this.t0 = time;
-      const age = (time - this.t0) / 1000;
-
-      // 팝인 (0.45초)
-      const p = Math.min(1, age / 0.45);
-      const ease = 1 - Math.pow(1 - p, 3);
-      const s = 0.6 + 0.4 * ease + Math.sin(Math.min(p, 1) * Math.PI) * 0.06;
-      this.mesh.scale.set(s, s, s);
-      this.mesh.material.opacity = ease;
-
-      // 부유
-      this.el.object3D.position.y = 0.66 + Math.sin(age * 1.5) * 0.022;
-      this.el.object3D.rotation.z = Math.sin(age * 0.9) * 0.012;
+      popOut(this.el.object3D, this.mesh, (time - this.t0) / 1000, 0.4);
     },
     remove() {
+      unfollowTarget(this);
       const engine = registry.get(this.data.engine);
       engine?._textures.delete(this.data.index);
       this.tex?.dispose();
@@ -112,10 +134,11 @@ function registerComponents() {
     },
   });
 
-  /* ---- 교사가 올린 AR 이미지 평면 ---- */
+  /* ---- 교사가 올린 "튀어나올 이미지" — 사진 표면에서 솟아오른다 ---- */
   A.registerComponent('ar-photo', {
     schema: { src: { type: 'string' }, width: { type: 'number', default: 1.0 } },
     init() {
+      followTarget(this);
       const loader = new THREE.TextureLoader();
       loader.load(this.data.src, tex => {
         if (!this.el) return;
@@ -127,20 +150,19 @@ function registerComponents() {
           new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false }),
         );
         mesh.renderOrder = 9;
+        mesh.scale.set(0.25, 0.25, 0.25);
+        mesh.material.opacity = 0;
         this.el.setObject3D('mesh', mesh);
         this.mesh = mesh;
-        this.t0 = null;
       });
     },
     tick(time) {
-      if (!this.mesh) return;
+      if (!this.mesh || !this.active) return;
       if (this.t0 === null) this.t0 = time;
-      const age = (time - this.t0) / 1000;
-      const p = Math.min(1, age / 0.4);
-      this.mesh.material.opacity = 1 - Math.pow(1 - p, 3);
-      this.el.object3D.position.y = Math.sin(age * 1.4) * 0.02;
+      popOut(this.el.object3D, this.mesh, (time - this.t0) / 1000, 0.45);
     },
     remove() {
+      unfollowTarget(this);
       this.mesh?.geometry.dispose();
       this.mesh?.material.dispose();
       this.el.removeObject3D('mesh');
@@ -196,6 +218,7 @@ export class ArEngine {
   }
 
   isActive(index) { return this._activeTargets.has(index); }
+  activeIndexes() { return [...this._activeTargets]; }
 
   /**
    * 씬 생성 + 시작
@@ -235,21 +258,23 @@ export class ArEngine {
       entity.setAttribute('mindar-image-target', `targetIndex: ${i}`);
 
       const ring = document.createElement('a-entity');
-      ring.setAttribute('scan-ring', `color: ${colorHex(t.ar?.color)}`);
+      ring.setAttribute('scan-ring', { color: colorHex(t.ar?.color) });
       ring.setAttribute('position', '0 0 0.01');
       entity.append(ring);
 
+      // 속성은 객체로 넘긴다. dataURL 에 든 ';' ':' 가 A-Frame 문자열 파서를 깨뜨리기 때문.
       if (t.arImage) {
         const photo = document.createElement('a-entity');
-        photo.setAttribute('ar-photo', `src: ${t.arImage}; width: 0.9`);
-        photo.setAttribute('position', '0 0 0.05');
+        photo.setAttribute('ar-photo', { src: t.arImage, width: 0.92 });
+        photo.setAttribute('position', '0 0 0.02');
         entity.append(photo);
+      } else {
+        // 튀어나올 이미지가 없으면 문제 카드가 대신 솟아오른다
+        const card = document.createElement('a-entity');
+        card.setAttribute('ar-card', { engine: this.key, index: i, width: 1.12 });
+        card.setAttribute('position', '0 0 0.02');
+        entity.append(card);
       }
-
-      const card = document.createElement('a-entity');
-      card.setAttribute('ar-card', `engine: ${this.key}; index: ${i}; width: 1.12`);
-      card.setAttribute('position', '0 0.66 0.12');
-      entity.append(card);
 
       entity.addEventListener('targetFound', () => {
         this._activeTargets.add(i);

@@ -307,14 +307,15 @@ function targetsCard(sc) {
     },
   }, [
     el('div', { style: { fontSize: '26px', marginBottom: '4px' } }, ['🖼️']),
-    el('div', { style: { fontWeight: '700' } }, ['단서 이미지 추가']),
-    el('div', { class: 'tiny dim', style: { marginTop: '3px' } }, ['클릭하거나 이미지를 끌어다 놓으세요 · 여러 장 한 번에 가능']),
+    el('div', { style: { fontWeight: '700' } }, ['인식할 사진 추가']),
+    el('div', { class: 'tiny dim', style: { marginTop: '3px' } },
+      ['게시판·시간표·작품 같은 실물을 찍은 사진, 또는 인쇄해 붙일 이미지 · 여러 장 한 번에 가능']),
   ]);
 
   return el('div', { class: 'card' }, [
     el('div', { class: 'card-hd' }, [
       el('h3', {}, ['🔒 단서 (자물쇠)']),
-      el('span', { class: 'tiny dim' }, ['학생이 이 이미지를 비추면 AR 카드가 뜹니다']),
+      el('span', { class: 'tiny dim' }, ['학생이 이 사진을 비추면 이미지가 튀어나오고 문제가 열립니다']),
     ]),
     sc.targets.length ? list : el('p', { class: 'muted small' }, ['아직 단서가 없습니다. 아래에서 이미지를 추가하세요.']),
     el('div', { style: { marginTop: sc.targets.length ? '14px' : '0' } }, [drop]),
@@ -437,6 +438,88 @@ function buildTargetEditor(box, sc, t, i) {
   });
   redraw();
 
+  /* --- 인식할 사진 + 튀어나올 이미지 — 이 한 쌍이 AR 의 전부다 --- */
+  const lb = text => el('div', {
+    class: 'lb', style: { fontSize: '12.5px', fontWeight: '700', color: 'var(--txt-2)', marginBottom: '6px' },
+  }, [text]);
+  const frame = src => el('img', {
+    src, style: { width: '100%', borderRadius: 'var(--r)', border: '1px solid var(--line)', display: 'block', background: '#0a0d16' },
+  });
+
+  const arImgSlot = el('div', {});
+  async function pickArImage() {
+    const f = await pickFile('image/*');
+    if (!f) return;
+    t.arImage = await resizeImage(await readFileAsDataURL(f), 720, 'image/png');
+    renderArImg();
+    touch();
+    toast('튀어나올 이미지를 넣었습니다.', 'ok');
+  }
+  function renderArImg() {
+    arImgSlot.innerHTML = '';
+    if (t.arImage) {
+      arImgSlot.append(
+        frame(t.arImage),
+        el('div', { class: 'row', style: { marginTop: '8px' } }, [
+          el('button', { class: 'btn btn-sm grow', onclick: pickArImage }, ['이미지 교체']),
+          el('button', {
+            class: 'btn btn-sm btn-danger',
+            onclick: () => { t.arImage = null; renderArImg(); touch(); },
+          }, ['제거']),
+        ]),
+      );
+    } else {
+      arImgSlot.append(
+        el('div', { class: 'drop', style: { padding: '22px 12px' }, onclick: pickArImage }, [
+          el('div', { style: { fontSize: '24px', marginBottom: '4px' } }, ['✨']),
+          el('div', { style: { fontWeight: '700', fontSize: '13px' } }, ['튀어나올 이미지 올리기']),
+          el('div', { class: 'tiny dim', style: { marginTop: '3px' } }, ['사진·그림·지도·힌트 조각 등']),
+        ]),
+        el('p', { class: 'tiny dim', style: { margin: '8px 0 0' } }, ['비워 두면 아래의 문제 카드가 대신 튀어나옵니다.']),
+      );
+    }
+  }
+  renderArImg();
+
+  box.append(el('div', { class: 'grid-2' }, [
+    el('div', {}, [
+      lb('📷 인식할 사진 — 학생이 비출 것'),
+      t.thumb ? frame(t.thumb) : el('div', { class: 'muted small' }, ['사진이 없습니다']),
+      el('div', { class: 'row', style: { marginTop: '8px' } }, [
+        el('button', {
+          class: 'btn btn-sm grow',
+          onclick: async () => {
+            const f = await pickFile('image/*');
+            if (!f) return;
+            const image = await resizeImage(await readFileAsDataURL(f), 1024, 'image/jpeg', 0.88);
+            t.thumb = image;
+            t.score = (await scoreMarker(image)).score;
+            sc.mind = null;
+            touch({ immediate: true });
+            render();
+            toast('사진을 교체했습니다. 다시 컴파일하세요.', 'ok');
+          },
+        }, ['사진 교체']),
+        el('button', {
+          class: 'btn btn-sm btn-danger',
+          onclick: async () => {
+            if (!await confirmDialog('단서 삭제', `"${t.name}"을(를) 삭제할까요?`, { okLabel: '삭제', danger: true })) return;
+            sc.targets.splice(i, 1);
+            sc.mind = null;
+            touch({ immediate: true });
+            render();
+          },
+        }, ['단서 삭제']),
+      ]),
+    ]),
+    el('div', {}, [
+      lb('✨ 튀어나올 이미지 — 인식되면 사진 위로 솟아오름'),
+      arImgSlot,
+    ]),
+  ]));
+
+  box.append(el('hr', { class: 'hr' }));
+
   /* --- 이름 / 열쇠 조각 --- */
   box.append(el('div', { class: 'grid-2' }, [
     el('label', { class: 'field' }, [
@@ -480,7 +563,8 @@ function buildTargetEditor(box, sc, t, i) {
 
   /* --- AR 모양 --- */
   box.append(el('hr', { class: 'hr' }));
-  box.append(el('h4', { style: { fontSize: '13px', color: 'var(--txt-2)' } }, ['AR 카드 모양']));
+  box.append(el('h4', { style: { fontSize: '13px', color: 'var(--txt-2)' } },
+    ['문제 카드 모양 — 튀어나올 이미지가 없을 때 대신 솟아오르는 카드']));
 
   const emojiPicker = el('div', { class: 'picker' }, AR_EMOJIS.map(e2 =>
     el('button', {
@@ -522,83 +606,11 @@ function buildTargetEditor(box, sc, t, i) {
     ]),
   );
 
-  /* --- 미리보기 + 이미지 --- */
-  box.append(el('div', { class: 'grid-2', style: { marginTop: '6px' } }, [
-    el('div', {}, [
-      el('div', { class: 'lb', style: { fontSize: '12.5px', fontWeight: '700', color: 'var(--txt-2)', marginBottom: '6px' } },
-        ['AR 카드 미리보기']),
-      preview,
-    ]),
-    el('div', {}, [
-      el('div', { class: 'lb', style: { fontSize: '12.5px', fontWeight: '700', color: 'var(--txt-2)', marginBottom: '6px' } },
-        ['인식할 이미지']),
-      t.thumb
-        ? el('img', { src: t.thumb, style: { width: '100%', borderRadius: 'var(--r)', border: '1px solid var(--line)', display: 'block' } })
-        : el('div', { class: 'muted small' }, ['이미지가 없습니다']),
-      el('div', { class: 'row', style: { marginTop: '8px' } }, [
-        el('button', {
-          class: 'btn btn-sm grow',
-          onclick: async () => {
-            const f = await pickFile('image/*');
-            if (!f) return;
-            const image = await resizeImage(await readFileAsDataURL(f), 1024, 'image/jpeg', 0.88);
-            t.thumb = image;
-            t.score = (await scoreMarker(image)).score;
-            sc.mind = null;
-            touch({ immediate: true });
-            render();
-            toast('이미지를 교체했습니다. 다시 컴파일하세요.', 'ok');
-          },
-        }, ['이미지 교체']),
-        el('button', {
-          class: 'btn btn-sm btn-danger',
-          onclick: async () => {
-            if (!await confirmDialog('단서 삭제', `"${t.name}"을(를) 삭제할까요?`, { okLabel: '삭제', danger: true })) return;
-            sc.targets.splice(i, 1);
-            sc.mind = null;
-            touch({ immediate: true });
-            render();
-          },
-        }, ['단서 삭제']),
-      ]),
-    ]),
+  /* --- 문제 카드 미리보기 --- */
+  box.append(el('div', { style: { marginTop: '6px', maxWidth: '420px' } }, [
+    lb('문제 카드 미리보기'),
+    preview,
   ]));
-
-  /* --- AR 이미지(선택) --- */
-  const arImgSlot = el('div', {});
-  const renderArImg = () => {
-    arImgSlot.innerHTML = '';
-    if (t.arImage) {
-      arImgSlot.append(
-        el('img', { src: t.arImage, style: { maxWidth: '160px', borderRadius: '10px', display: 'block', marginBottom: '8px' } }),
-        el('button', {
-          class: 'btn btn-sm btn-danger',
-          onclick: () => { t.arImage = null; renderArImg(); touch(); },
-        }, ['AR 이미지 제거']),
-      );
-    } else {
-      arImgSlot.append(el('button', {
-        class: 'btn btn-sm',
-        onclick: async () => {
-          const f = await pickFile('image/*');
-          if (!f) return;
-          t.arImage = await resizeImage(await readFileAsDataURL(f), 720, 'image/png');
-          renderArImg();
-          touch();
-          toast('AR 이미지를 추가했습니다.', 'ok');
-        },
-      }, ['+ AR 이미지 올리기']));
-    }
-  };
-  renderArImg();
-
-  box.append(
-    el('hr', { class: 'hr' }),
-    el('label', { class: 'field' }, [
-      el('span', { class: 'lb' }, ['함께 띄울 AR 이미지 (선택) — 지도·사진·도표 등']),
-      arImgSlot,
-    ]),
-  );
 
   function syncHead() {
     const head = box.parentElement?.querySelector('.tgt-hd');

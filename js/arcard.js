@@ -36,7 +36,7 @@ export function wrapText(ctx, text, maxWidth, maxLines = 99) {
   return out;
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -46,7 +46,7 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-const FONT = '"Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif';
+export const FONT = '"Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif';
 
 /** 모서리 장식 (방탈출 느낌의 프레임) */
 function corners(ctx, x, y, w, h, hex, len = 46, lw = 6) {

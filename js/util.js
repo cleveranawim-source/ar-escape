@@ -153,7 +153,11 @@ export function download(filename, blobOrString, mime = 'application/json') {
 
 export function pickFile(accept = '', multiple = false) {
   return new Promise(res => {
-    const input = el('input', { type: 'file', accept, multiple, style: { display: 'none' } });
+    // display:none 이면 iOS Safari 가 프로그램 click() 을 무시한다 → 화면 밖에 두되 레이아웃에는 남긴다
+    const input = el('input', {
+      type: 'file', accept, multiple,
+      style: { position: 'fixed', left: '-9999px', top: '0', width: '1px', height: '1px', opacity: '0' },
+    });
     input.addEventListener('change', () => {
       res(multiple ? [...input.files] : input.files[0] || null);
       input.remove();

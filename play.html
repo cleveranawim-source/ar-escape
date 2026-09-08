@@ -31,8 +31,17 @@
   </div>
 
   <div class="scan-hint" id="scan-hint">
-    <b>단서 이미지</b>를 화면 가운데에 비추세요.<br>
+    <b>단서 사진</b>을 화면 가운데에 비추세요.<br>
     <span class="tiny dim">전체가 화면에 들어오도록, 30cm 정도 거리에서</span>
+  </div>
+
+  <!-- 인식됨 → 먼저 튀어나온 이미지를 보게 하고, 눌러야 문제가 열린다 -->
+  <div class="found-bar" id="found-bar" hidden>
+    <div class="grow">
+      <div class="fb-title" id="found-name">단서 발견</div>
+      <div class="tiny dim" id="found-sub">튀어나온 이미지를 살펴본 뒤 문제를 여세요</div>
+    </div>
+    <button class="btn btn-primary" id="found-open">문제 보기</button>
   </div>
 </div>
 

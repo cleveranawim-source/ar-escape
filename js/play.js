@@ -25,6 +25,8 @@ const S = {
   timerId: null,
   openTarget: null,   // 현재 시트에 열린 타겟 index
   finalOpen: false,
+  pending: null,      // 인식됐지만 아직 "문제 보기"를 누르지 않은 타겟 index
+  pendingTimer: null,
   timeUpHandled: false,
 };
 
@@ -266,7 +268,7 @@ async function startAr() {
     $('#reticle').hidden = false;
     bindHud();
     updateHud();
-    toast('단서 이미지를 비춰 보세요', '', 3200);
+    toast('단서 사진을 비춰 보세요', '', 3200);
   } catch (err) {
     $('#screen-load').hidden = true;
     showCameraError(normalizeCameraError(err));
@@ -326,19 +328,46 @@ function onTargetFound(index) {
   $('#reticle').hidden = true;
   $('#scan-hint').hidden = true;
   vibrate(30);
+  beep(isSolved(t) ? 'tick' : 'found');
+  showFoundBar(index);
+}
 
-  if (isSolved(t)) {
-    beep('tick');
-    toast(`${t.name} — 이미 해제한 단서입니다`, 'ok', 1800);
-    return;
+/* 인식 즉시 문제창을 열지 않는다. 먼저 사진에서 튀어나온 이미지를 보게 하고,
+   학생이 "문제 보기"를 눌러야 시트가 열린다. 곧바로 2D 폼이 화면을 덮어 버리면
+   카메라를 볼 이유가 없어져 QR 코드와 다를 게 없어진다. */
+function showFoundBar(index) {
+  const t = S.scenario.targets[index];
+  clearTimeout(S.pendingTimer);
+  S.pending = index;
+  const done = isSolved(t);
+  $('#found-name').textContent = `${t.ar.emoji} ${t.name}`;
+  $('#found-sub').textContent = done
+    ? (t.ar.caption?.trim() || '이미 해제한 단서입니다')
+    : '튀어나온 이미지를 살펴본 뒤 문제를 여세요';
+  $('#found-open').hidden = done;
+  $('#found-bar').hidden = false;
+  if (done) S.pendingTimer = setTimeout(hideFoundBar, 3000);
+}
+
+function hideFoundBar() {
+  clearTimeout(S.pendingTimer);
+  S.pending = null;
+  $('#found-bar').hidden = true;
+  if (S.mode === 'ar' && S.openTarget === null && !S.finalOpen) {
+    $('#reticle').hidden = false;
+    $('#scan-hint').hidden = false;
   }
-  beep('found');
-  openQuiz(index);
 }
 
 function onTargetLost(index) {
   // 시트는 일부러 유지한다. 학생이 태블릿을 내려놓고 답을 입력할 수 있어야 하므로.
-  if (!S.engine?.isActive?.(index) && S.openTarget === null && !S.finalOpen) {
+  // 발견 안내도 몇 초는 남긴다 — 태블릿을 내리면서 "문제 보기"를 누를 수 있게.
+  if (S.pending === index && S.openTarget === null && !S.finalOpen) {
+    clearTimeout(S.pendingTimer);
+    S.pendingTimer = setTimeout(hideFoundBar, 5000);
+    return;
+  }
+  if (!S.engine?.isActive?.(index) && S.openTarget === null && !S.finalOpen && S.pending === null) {
     $('#reticle').hidden = false;
     $('#scan-hint').hidden = false;
   }
@@ -391,8 +420,11 @@ function closeSheet() {
   S.openTarget = null;
   S.finalOpen = false;
   if (S.mode === 'ar') {
-    $('#reticle').hidden = false;
-    $('#scan-hint').hidden = false;
+    // 마커를 계속 비추고 있으면 targetFound 가 다시 오지 않는다.
+    // 그 상태에서 "사진을 비추세요"만 띄우면 학생이 혼란스러우니 발견 바를 되살린다.
+    const still = S.engine?.activeIndexes?.() ?? [];
+    if (still.length) showFoundBar(still[0]);
+    else { $('#reticle').hidden = false; $('#scan-hint').hidden = false; }
   }
   setTimeout(() => { if (!sheet().classList.contains('open')) sheet().innerHTML = ''; }, 400);
 }
@@ -771,6 +803,14 @@ function bindHud() {
   $('#btn-keys').onclick = openKeyBox;
   $('#btn-final').onclick = () => { closeSheet(); setTimeout(openFinalLock, 260); };
   $('#btn-menu').onclick = openMenu;
+  $('#found-open').onclick = () => {
+    const i = S.pending;
+    if (i === null) return;
+    clearTimeout(S.pendingTimer);
+    S.pending = null;
+    $('#found-bar').hidden = true;
+    openQuiz(i);
+  };
 }
 
 function openMenu() {

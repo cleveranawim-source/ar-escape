@@ -7,9 +7,67 @@
    (바이너리 에셋 없이 바로 체험할 수 있게)
    ============================================================ */
 
-import { newScenario, newTarget } from './model.js';
+import { newScenario, newTarget, colorHex } from './model.js';
 import { drawMarker } from './markers-draw.js';
+import { wrapText, roundRect, FONT } from './arcard.js';
 import { scoreMarker } from './util.js';
+
+/* 샘플용 "튀어나올 이미지" — 상황 카드를 즉석에서 그린다.
+   답을 말해 주지 않고 장면만 던져서, 문제를 열기 전에 한 번 생각하게 만든다. */
+function drawSceneCard(cv, o) {
+  const W = cv.width = 600;
+  const H = cv.height = 840;
+  const ctx = cv.getContext('2d');
+  const hex = colorHex(o.color);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.save();
+  roundRect(ctx, 14, 14, W - 28, H - 28, 46);
+  ctx.clip();
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, `${hex}cc`);
+  g.addColorStop(0.55, '#141a2a');
+  g.addColorStop(1, '#0b0f1a');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, H * 0.36, 20, W / 2, H * 0.36, 330);
+  glow.addColorStop(0, `${hex}77`);
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  ctx.strokeStyle = hex;
+  ctx.lineWidth = 6;
+  roundRect(ctx, 14, 14, W - 28, H - 28, 46);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.16)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 30, 30, W - 60, H - 60, 32);
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `230px ${FONT}`;
+  ctx.fillText(o.emoji, W / 2, H * 0.36);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `900 46px ${FONT}`;
+  ctx.fillText(o.title, W / 2, H * 0.64);
+
+  ctx.fillStyle = 'rgba(220,232,242,.8)';
+  ctx.font = `600 27px ${FONT}`;
+  let y = H * 0.72;
+  for (const line of wrapText(ctx, o.sub, W - 110, 3)) { ctx.fillText(line, W / 2, y); y += 38; }
+
+  ctx.fillStyle = `${hex}33`;
+  roundRect(ctx, 40, 40, 78, 78, 22);
+  ctx.fill();
+  ctx.fillStyle = hex;
+  ctx.font = `900 40px ${FONT}`;
+  ctx.fillText(String(o.n), 79, 80);
+  return cv;
+}
 
 const QUIZZES = [
   {
@@ -17,6 +75,7 @@ const QUIZZES = [
     emoji: '🪞',
     color: 'teal',
     reward: '마',
+    scene: { title: '거울 속 얼굴', sub: '누군가 거울 앞에 서 있다. 표정이 무언가를 말하려 한다.' },
     caption: '거울 속 내 표정에 이름이 붙었다.',
     quiz: {
       type: 'choice',
@@ -37,6 +96,7 @@ const QUIZZES = [
     emoji: '⏳',
     color: 'sky',
     reward: '음',
+    scene: { title: '여섯 알의 모래', sub: '손끝이 떨린다. 모래가 다 떨어지기 전에 무엇을 할까.' },
     caption: '모래가 멈추고, 숨이 돌아왔다.',
     quiz: {
       type: 'choice',
@@ -57,6 +117,7 @@ const QUIZZES = [
     emoji: '🧭',
     color: 'lime',
     reward: '의',
+    scene: { title: '한쪽만 가리키는 바늘', sub: '친구는 오늘도 지나쳐 갔다. 바늘은 왜 자꾸 한쪽만 가리킬까.' },
     caption: '나침반이 상대방 쪽으로 돌아섰다.',
     quiz: {
       type: 'choice',
@@ -77,6 +138,7 @@ const QUIZZES = [
     emoji: '🧩',
     color: 'rose',
     reward: '열',
+    scene: { title: '맞지 않는 조각', sub: '모둠 과제의 마지막 조각이 자꾸 어긋난다. 어떤 말로 맞춰야 할까.' },
     caption: '흩어져 있던 조각이 맞물렸다.',
     quiz: {
       type: 'short',
@@ -91,6 +153,7 @@ const QUIZZES = [
     emoji: '🔮',
     color: 'purple',
     reward: '쇠',
+    scene: { title: '두 갈래 길', sub: '구슬 속에 내일이 비친다. 어느 길이 나를 남기는 길일까.' },
     caption: '구슬 속에 내일의 내가 비쳤다. 문으로 향하라.',
     quiz: {
       type: 'choice',
@@ -141,9 +204,18 @@ export async function buildDemoScenario(onProgress = () => {}) {
     });
     const thumb = cv.toDataURL('image/jpeg', 0.88);
 
+    // 600×840 으로 그린 뒤 480×672 로 줄인다 — 투명 모서리를 살리려면 PNG 여야 하고,
+    // 그 크기면 장당 300KB 안팎이라 내보내기 파일이 크게 불지 않는다.
+    const scene = document.createElement('canvas');
+    drawSceneCard(scene, { n: i + 1, emoji: q.emoji, color: q.color, ...q.scene });
+    const small = document.createElement('canvas');
+    small.width = 480; small.height = 672;
+    small.getContext('2d').drawImage(scene, 0, 0, 480, 672);
+
     const t = newTarget(i);
     t.name = q.name;
     t.thumb = thumb;
+    t.arImage = small.toDataURL('image/png');
     t.reward = q.reward;
     t.ar = { emoji: q.emoji, color: q.color, caption: q.caption };
     t.quiz = {
