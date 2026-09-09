@@ -30,9 +30,11 @@ const S = {
   timeUpHandled: false,
 };
 
-const solvedCount = () => Object.keys(S.progress?.solved || {}).length;
-const totalCount = () => S.scenario?.targets.length || 0;
 const isSolved = t => !!S.progress?.solved[t.id];
+/* 보너스 단서는 탈출 조건·진행률·열쇠 보관함에서 뺀다. 덤으로 푸는 별개 문제이므로. */
+const requiredTargets = () => (S.scenario?.targets || []).filter(t => !t.bonus);
+const totalCount = () => requiredTargets().length;
+const solvedCount = () => requiredTargets().filter(isSolved).length;
 
 /* 벌점 포함 경과 시간 */
 function elapsedMs() {
@@ -87,6 +89,7 @@ async function boot() {
 /** 아예 클리어가 불가능한 시나리오를 학생 기기에서 미리 걸러낸다 */
 function unplayableReason(sc) {
   if (!sc.targets?.length) return '이 방탈출에는 단서가 하나도 없습니다. 선생님께 알려 주세요.';
+  if (!sc.targets.some(t => !t.bonus)) return '보너스 단서만 있어 탈출 조건이 없습니다. 선생님께 알려 주세요.';
   if (!computeFinalAnswer(sc).trim()) {
     return '최종 암호가 비어 있어 탈출할 수 없습니다. 제작 스튜디오에서 열쇠 조각을 채워야 합니다.';
   }
@@ -136,8 +139,10 @@ function showStart() {
 
   const meta = $('#s-meta');
   meta.innerHTML = '';
+  const bonusN = sc.targets.filter(t => t.bonus).length;
   meta.append(
-    el('span', { class: 'badge' }, [`🔒 자물쇠 ${sc.targets.length}개`]),
+    el('span', { class: 'badge' }, [`🔒 자물쇠 ${sc.targets.length - bonusN}개`]),
+    bonusN ? el('span', { class: 'badge' }, [`🎁 보너스 ${bonusN}개`]) : null,
     el('span', { class: 'badge gold' }, [sc.timeLimitMin ? `⏳ 제한 ${sc.timeLimitMin}분` : '⏳ 시간 무제한']),
     sc.mind
       ? el('span', { class: 'badge ok' }, ['📷 AR 준비됨'])
@@ -312,8 +317,9 @@ function cardDataFor(t) {
       : (t.quiz.question || ''),
     emoji: t.ar.emoji,
     color: t.ar.color,
-    badge: done ? '해제됨' : '잠김',
-    reward: done ? t.reward : '',
+    badge: done ? '해제됨' : (t.bonus ? '보너스' : '잠김'),
+    reward: done ? (t.bonus ? '🎁 보너스 성공' : t.reward) : '',
+    rewardLabel: t.bonus ? '덤 문제' : '',
     footer: done ? '' : '아래 창에서 답을 입력하세요',
   };
 }
@@ -343,7 +349,7 @@ function showFoundBar(index) {
   $('#found-name').textContent = `${t.ar.emoji} ${t.name}`;
   $('#found-sub').textContent = done
     ? (t.ar.caption?.trim() || '이미 해제한 단서입니다')
-    : '튀어나온 이미지를 살펴본 뒤 문제를 여세요';
+    : (t.bonus ? '🎁 보너스 단서 — 탈출과는 별개인 덤 문제' : '튀어나온 이미지를 살펴본 뒤 문제를 여세요');
   $('#found-open').hidden = done;
   $('#found-bar').hidden = false;
   if (done) S.pendingTimer = setTimeout(hideFoundBar, 3000);
@@ -401,8 +407,8 @@ function renderSim() {
         ? el('img', { src: t.thumb, alt: t.name })
         : el('div', { style: { aspectRatio: '4/3', display: 'grid', placeItems: 'center', fontSize: '34px' } }, [t.ar.emoji]),
       el('div', { class: 'cap' }, [
-        el('span', {}, [t.name]),
-        el('span', {}, [done ? '✅' : '🔒']),
+        el('span', {}, [t.bonus ? `🎁 ${t.name}` : t.name]),
+        el('span', {}, [done ? '✅' : (t.bonus ? '🎁' : '🔒')]),
       ]),
     ]));
   });
@@ -599,7 +605,13 @@ function onCorrect(t, index, state, ui) {
   ui.actions.remove();
 
   const after = el('div', {});
-  if (t.reward?.trim()) {
+  if (t.bonus) {
+    after.append(el('div', { class: 'reward-pop' }, [
+      el('div', { class: 'cap' }, ['보너스 문제 성공']),
+      el('div', { class: 'val' }, ['🎁']),
+      el('div', { class: 'small', style: { marginTop: '6px', color: 'var(--txt-2)' } }, ['탈출과는 별개인 덤 문제예요. 선생님께 보여 주세요!']),
+    ]));
+  } else if (t.reward?.trim()) {
     after.append(el('div', { class: 'reward-pop' }, [
       el('div', { class: 'cap' }, ['열쇠 조각 획득']),
       el('div', { class: 'val' }, [t.reward]),
@@ -630,7 +642,7 @@ function onCorrect(t, index, state, ui) {
   updateHud();
   if (S.mode === 'sim') renderSim();
 
-  if (allDone) toast('모든 자물쇠를 해제했습니다! 최종 암호를 입력하세요.', 'ok', 4000);
+  if (allDone && !t.bonus) toast('모든 자물쇠를 해제했습니다! 최종 암호를 입력하세요.', 'ok', 4000);
 }
 
 /* ============================================================
@@ -638,7 +650,7 @@ function onCorrect(t, index, state, ui) {
    ============================================================ */
 
 function keyFragments() {
-  return S.scenario.targets.map(t => ({
+  return requiredTargets().map(t => ({
     name: t.name,
     reward: t.reward || '',
     got: isSolved(t),
@@ -946,10 +958,10 @@ function renderResult(escaped, reason) {
       style: { padding: '9px 0', borderTop: i ? '1px solid var(--line-soft)' : 'none', fontSize: '14px' },
     }, [
       el('div', { class: 'grow' }, [
-        el('div', { style: { fontWeight: '700' } }, [`${rec ? '✅' : '❌'} ${t.name}`]),
+        el('div', { style: { fontWeight: '700' } }, [`${rec ? '✅' : (t.bonus ? '🎁' : '❌')} ${t.name}${t.bonus ? ' (보너스)' : ''}`]),
         el('div', { class: 'tiny dim' }, [`정답: ${answerText(t)}`]),
       ]),
-      el('div', { class: 'tiny dim nowrap' }, [rec ? `${rec.tries}회 시도${rec.hintUsed ? ' · 힌트' : ''}` : '미해결']),
+      el('div', { class: 'tiny dim nowrap' }, [rec ? `${rec.tries}회 시도${rec.hintUsed ? ' · 힌트' : ''}` : (t.bonus ? '미도전' : '미해결')]),
     ]));
   });
   body.append(detail);

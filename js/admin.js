@@ -393,7 +393,8 @@ function targetRow(sc, t, i) {
         el('div', { class: 'tgt-sub' }, [t.quiz.question?.trim() || '문제가 비어 있습니다']),
         el('div', { class: 'row', style: { marginTop: '5px', gap: '6px' } }, [
           t.thumb ? el('span', { class: `score-pill ${scoreCls}` }, [`인식 ${t.score}점`]) : null,
-          t.reward?.trim() ? el('span', { class: 'badge gold' }, [`열쇠 ${t.reward}`]) : null,
+          t.bonus ? el('span', { class: 'badge' }, ['🎁 보너스']) : null,
+          !t.bonus && t.reward?.trim() ? el('span', { class: 'badge gold' }, [`열쇠 ${t.reward}`]) : null,
         ]),
       ]),
       el('div', { class: 'tgt-actions' }, [
@@ -536,6 +537,14 @@ function buildTargetEditor(box, sc, t, i) {
         oninput: e => { t.reward = e.target.value; A._refreshFinalPreview?.(); touch(); syncHead(); },
       }),
     ]),
+  ]));
+
+  box.append(el('label', { class: 'row', style: { gap: '8px', margin: '-4px 0 12px', cursor: 'pointer', fontSize: '13px' } }, [
+    el('input', {
+      type: 'checkbox', checked: t.bonus,
+      onchange: e => { t.bonus = e.target.checked; A._refreshFinalPreview?.(); touch(); },
+    }),
+    el('span', {}, ['🎁 보너스 단서 — 최종 암호·진행률에 넣지 않는 덤 문제 (맞힌 학생은 따로 챙겨 주세요)']),
   ]));
 
   /* --- 문제 --- */

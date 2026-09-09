@@ -26,6 +26,7 @@
        answer: string, hint: string, explain: string
      }
      reward: string      // 정답 시 얻는 열쇠 조각 (보통 한 글자)
+     bonus: boolean      // 보너스 단서 — 최종 암호·진행률·열쇠 보관함에서 제외되는 덤 문제
    }
    ============================================================ */
 
@@ -77,6 +78,7 @@ export function newTarget(idx = 0) {
     arImage: null,
     quiz: newQuiz('choice'),
     reward: '',
+    bonus: false,
   };
 }
 
@@ -105,7 +107,7 @@ export function newScenario() {
 /** 열쇠 조각을 단서 순서대로 이어붙인 최종 암호 */
 export function computeFinalAnswer(scenario) {
   if (scenario.finalLock?.mode === 'manual') return scenario.finalLock.answer || '';
-  return (scenario.targets || []).map(t => (t.reward || '').trim()).join('');
+  return (scenario.targets || []).filter(t => !t.bonus).map(t => (t.reward || '').trim()).join('');
 }
 
 /** 특정 문제의 정답 판정 */
@@ -140,6 +142,7 @@ export function validate(scenario) {
 
   if (!scenario.title?.trim()) errors.push('시나리오 제목이 비어 있습니다.');
   if (!scenario.targets?.length) errors.push('단서(타겟)를 하나 이상 추가하세요.');
+  else if (!scenario.targets.some(t => !t.bonus)) errors.push('보너스가 아닌 단서가 하나 이상 있어야 탈출할 수 있습니다.');
 
   scenario.targets?.forEach((t, i) => {
     const tag = `${i + 1}번 단서`;
@@ -152,7 +155,7 @@ export function validate(scenario) {
     } else if (!String(t.quiz.answer).trim()) {
       errors.push(`${tag}: 정답을 입력하세요.`);
     }
-    if (!t.reward?.trim() && scenario.finalLock.mode === 'auto') {
+    if (!t.bonus && !t.reward?.trim() && scenario.finalLock.mode === 'auto') {
       errors.push(`${tag}: 열쇠 조각이 비어 있습니다. (최종 암호 자동 조합에 필요)`);
     }
     if (t.score && t.score < 34) warns.push(`${tag}: 이미지 인식 점수가 낮습니다(${t.score}점). 무늬가 많은 이미지를 권장합니다.`);
@@ -196,6 +199,7 @@ export function migrate(raw) {
     merged.quiz = { ...newQuiz(), ...(t.quiz || {}) };
     if (!Array.isArray(merged.quiz.choices)) merged.quiz.choices = ['', '', '', ''];
     while (merged.quiz.choices.length < 2) merged.quiz.choices.push('');
+    merged.bonus = !!merged.bonus;
     return merged;
   });
   s.version = SCHEMA_VERSION;

@@ -165,7 +165,7 @@ export function drawCard(canvas, o = {}) {
     const ry = H - pad - 88;
     ctx.font = `700 26px ${FONT}`;
     ctx.fillStyle = 'rgba(220,232,242,.7)';
-    ctx.fillText('획득한 열쇠 조각', left, ry - 4);
+    ctx.fillText(o.rewardLabel || '획득한 열쇠 조각', left, ry - 4);
 
     ctx.font = `900 62px ${FONT}`;
     ctx.fillStyle = hex;
