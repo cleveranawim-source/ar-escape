@@ -27,6 +27,7 @@ const S = {
   finalOpen: false,
   pending: null,      // 인식됐지만 아직 "문제 보기"를 누르지 않은 타겟 index
   pendingTimer: null,
+  sheetGen: 0,        // 시트 세대 번호 — 닫힘 뒤 정리가 새로 열린 시트를 지우지 않게
   timeUpHandled: false,
 };
 
@@ -35,6 +36,8 @@ const isSolved = t => !!S.progress?.solved[t.id];
 const requiredTargets = () => (S.scenario?.targets || []).filter(t => !t.bonus);
 const totalCount = () => requiredTargets().length;
 const solvedCount = () => requiredTargets().filter(isSolved).length;
+const bonusTargets = () => (S.scenario?.targets || []).filter(t => t.bonus);
+const unsolvedBonus = () => bonusTargets().filter(t => !isSolved(t));
 
 /* 벌점 포함 경과 시간 */
 function elapsedMs() {
@@ -432,11 +435,15 @@ function closeSheet() {
     if (still.length) showFoundBar(still[0]);
     else { $('#reticle').hidden = false; $('#scan-hint').hidden = false; }
   }
-  setTimeout(() => { if (!sheet().classList.contains('open')) sheet().innerHTML = ''; }, 400);
+  // 닫힘 애니메이션 뒤 내용을 비운다. 그 사이 다른 시트가 열렸으면(세대 번호가 바뀜) 건드리지 않는다.
+  // 'open' 클래스는 rAF 뒤에 붙으므로 그것만 보고 판단하면 20ms 남짓의 경쟁이 생긴다.
+  const gen = ++S.sheetGen;
+  setTimeout(() => { if (gen === S.sheetGen) sheet().innerHTML = ''; }, 400);
 }
 
 function openSheet(build) {
   const s = sheet();
+  S.sheetGen++;
   s.innerHTML = '';
   build(s);
   s.scrollTop = 0;
@@ -627,13 +634,28 @@ function onCorrect(t, index, state, ui) {
   }
 
   const allDone = solvedCount() >= totalCount();
-  after.append(el('div', { class: 'row', style: { marginTop: '8px' } }, [
-    allDone
-      ? el('button', { class: 'btn btn-gold btn-block btn-lg', onclick: () => { closeSheet(); setTimeout(openFinalLock, 380); } },
-          ['🔓 최종 자물쇠 열기'])
-      : el('button', { class: 'btn btn-primary btn-block btn-lg', onclick: closeSheet },
-          ['다음 단서 찾으러 가기']),
-  ]));
+  const bonusLeft = unsolvedBonus().length;
+  const next = el('div', { class: 'stack', style: { marginTop: '8px' } });
+  const note = text => el('p', { class: 'small center', style: { margin: '0 0 4px', color: 'var(--txt-2)' } }, [text]);
+
+  if (t.bonus && !allDone) {
+    // 보너스를 먼저 풀었다 → 탈출은 아직이라는 걸 분명히
+    next.append(
+      note(`보너스는 여기까지! 자물쇠가 아직 ${totalCount() - solvedCount()}개 남았어요.`),
+      el('button', { class: 'btn btn-primary btn-block btn-lg', onclick: closeSheet }, ['메인 미션 계속하기']),
+    );
+  } else if (allDone) {
+    // 메인이 끝났다 → 보너스가 남았으면 탈출 전에 알려 준다 (탈출하면 보너스는 끝)
+    if (bonusLeft) next.append(note(`🎁 보너스 단서 ${bonusLeft}개가 남아 있어요. 탈출하면 보너스는 끝나니, 시간이 있다면 먼저 도전해 보세요.`));
+    next.append(el('button', {
+      class: 'btn btn-gold btn-block btn-lg',
+      onclick: () => { closeSheet(); setTimeout(openFinalLock, 380); },
+    }, ['🔓 최종 자물쇠 열기']));
+    if (bonusLeft) next.append(el('button', { class: 'btn btn-block', onclick: closeSheet }, ['🎁 보너스 먼저 찾기']));
+  } else {
+    next.append(el('button', { class: 'btn btn-primary btn-block btn-lg', onclick: closeSheet }, ['다음 단서 찾으러 가기']));
+  }
+  after.append(next);
 
   ui.box.append(after);
   sheet().scrollTo({ top: sheet().scrollHeight, behavior: 'smooth' });
@@ -642,7 +664,11 @@ function onCorrect(t, index, state, ui) {
   updateHud();
   if (S.mode === 'sim') renderSim();
 
-  if (allDone && !t.bonus) toast('모든 자물쇠를 해제했습니다! 최종 암호를 입력하세요.', 'ok', 4000);
+  if (allDone && !t.bonus) {
+    toast(bonusLeft
+      ? '모든 자물쇠를 해제했습니다! 보너스에 도전하거나 최종 암호를 입력하세요.'
+      : '모든 자물쇠를 해제했습니다! 최종 암호를 입력하세요.', 'ok', 4200);
+  }
 }
 
 /* ============================================================
@@ -702,6 +728,15 @@ function openFinalLock() {
     if (!gotAll) {
       box.append(el('p', { class: 'muted small center', style: { margin: '14px 0' } },
         ['아직 모으지 못한 조각이 있습니다. 그래도 암호를 알아냈다면 입력해 보세요.']));
+    }
+
+    const bonusLeft = unsolvedBonus();
+    if (bonusLeft.length) {
+      box.append(el('div', { class: 'hintbox', style: { marginTop: '10px' } }, [
+        el('b', {}, ['🎁 보너스 ']),
+        `${bonusLeft.map(t => t.name).join(', ')} — 아직 풀지 않았어요. 탈출하면 보너스는 끝납니다. `,
+        el('button', { class: 'btn btn-sm btn-ghost', style: { marginLeft: '4px' }, onclick: closeSheet }, ['먼저 찾으러 가기']),
+      ]));
     }
 
     const input = el('input', {
@@ -949,6 +984,19 @@ function renderResult(escaped, reason) {
     ]),
   );
 
+  // 보너스 결과 — 맞힌 학생은 이 화면을 선생님께 보여 준다
+  const bonus = bonusTargets();
+  if (bonus.length) {
+    const won = bonus.filter(isSolved);
+    body.append(won.length
+      ? el('div', { class: 'card', style: { borderColor: 'rgba(255,201,77,.55)', textAlign: 'center' } }, [
+          el('div', { style: { fontSize: '34px' } }, ['🎁']),
+          el('div', { style: { fontWeight: '900', fontSize: '17px', color: 'var(--gold)' } }, ['보너스 성공!']),
+          el('div', { class: 'small muted', style: { marginTop: '4px' } }, [`${won.map(t => t.name).join(', ')} · 이 화면을 선생님께 보여 주세요`]),
+        ])
+      : el('p', { class: 'tiny dim center', style: { margin: '6px 0 12px' } }, ['🎁 보너스는 도전하지 않았어요.']));
+  }
+
   // 문제별 요약
   const detail = el('div', { class: 'card' }, [el('h3', { style: { fontSize: '15px' } }, ['풀이 요약'])]);
   S.scenario.targets.forEach((t, i) => {
@@ -997,7 +1045,8 @@ function renderResult(escaped, reason) {
           `[${S.scenario.title}] ${p.team}`,
           `${escaped ? '탈출 성공' : '미탈출'} · ${fmtClock(p.elapsedMs)}`,
           `해제 ${solvedCount()}/${totalCount()} · 힌트 ${p.hintsUsed || 0}회`,
-        ].join('\n');
+          bonusTargets().length ? `보너스 ${bonusTargets().filter(isSolved).length ? '성공' : '미도전'}` : null,
+        ].filter(Boolean).join('\n');
         navigator.clipboard?.writeText(text)
           .then(() => toast('결과를 복사했습니다.', 'ok'))
           .catch(() => toast('복사에 실패했습니다.', 'err'));
