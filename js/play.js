@@ -12,6 +12,7 @@ import {
   loadProgress, saveProgress, clearProgress, addRecord, listRecords,
 } from './store.js';
 import { ArEngine, loadArRuntime, normalizeCameraError } from './ar.js';
+import { createReporter } from './live.js';
 
 /* ============================================================
    상태
@@ -28,6 +29,8 @@ const S = {
   pending: null,      // 인식됐지만 아직 "문제 보기"를 누르지 않은 타겟 index
   pendingTimer: null,
   sheetGen: 0,        // 시트 세대 번호 — 닫힘 뒤 정리가 새로 열린 시트를 지우지 않게
+  room: null,         // ?room= 이 있으면 교사 현황판으로 진행 상황을 보낸다
+  reporter: null,
   timeUpHandled: false,
 };
 
@@ -59,6 +62,7 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   const src = params.get('src');
   const id = params.get('id');
+  S.room = params.get('room');
 
   try {
     if (src) {
@@ -225,6 +229,13 @@ async function startGame(mode, resumeProgress = null) {
   }
   persist();
 
+  S.reporter = createReporter({
+    room: S.room,
+    team,
+    meta: { title: S.scenario.title, total: totalCount(), bonusTotal: bonusTargets().length },
+  });
+  report({ current: null, tries: 0 });
+
   $('#screen-start').hidden = true;
   beep('found');
 
@@ -234,6 +245,26 @@ async function startGame(mode, resumeProgress = null) {
     await startAr();
   }
   startTimer();
+}
+
+/* 교사 현황판으로 현재 상태를 보낸다. 방 코드가 없으면 아무 일도 하지 않는다.
+   경과 시간은 기기마다 시계가 달라 startedAt 을 그대로 보내면 어긋난다.
+   보낸 시점의 elapsedMs 를 주고, 현황판이 도착 시각부터 자기 시계로 이어 센다. */
+function report(extra = {}) {
+  if (!S.reporter || !S.progress) return;
+  S.reporter.push({
+    name: S.progress.team,
+    solved: solvedCount(),
+    total: totalCount(),
+    bonus: bonusTargets().filter(isSolved).length,
+    bonusTotal: bonusTargets().length,
+    hints: S.progress.hintsUsed || 0,
+    elapsedMs: elapsedMs(),
+    finished: !!S.progress.finished,
+    escaped: !!S.progress.escaped,
+    mode: S.mode,
+    ...extra,
+  });
 }
 
 function persist() {
@@ -437,6 +468,7 @@ function closeSheet() {
   }
   // 닫힘 애니메이션 뒤 내용을 비운다. 그 사이 다른 시트가 열렸으면(세대 번호가 바뀜) 건드리지 않는다.
   // 'open' 클래스는 rAF 뒤에 붙으므로 그것만 보고 판단하면 20ms 남짓의 경쟁이 생긴다.
+  report({ current: null, tries: 0 });
   const gen = ++S.sheetGen;
   setTimeout(() => { if (gen === S.sheetGen) sheet().innerHTML = ''; }, 400);
 }
@@ -457,6 +489,7 @@ function openQuiz(index) {
   S.finalOpen = false;
 
   const state = { selected: null, tries: 0, hintShown: false, answered: false };
+  report({ current: t.name, currentBonus: !!t.bonus, tries: 0, since: Date.now() });
 
   openSheet(box => {
     const hex = colorHex(t.ar.color);
@@ -557,6 +590,7 @@ function openQuiz(index) {
         S.progress.hintsUsed = (S.progress.hintsUsed || 0) + 1;
       }
       persist();
+      report({ tries: state.tries });
       sheet().scrollTo({ top: sheet().scrollHeight, behavior: 'smooth' });
     }
 
@@ -566,6 +600,7 @@ function openQuiz(index) {
       if (value === null || value === undefined || String(value).trim() === '') return;
 
       state.tries++;
+      report({ tries: state.tries });
       if (checkAnswer(t, value)) {
         state.answered = true;
         onCorrect(t, index, state, { body, actions, box });
@@ -662,6 +697,7 @@ function onCorrect(t, index, state, ui) {
 
   refreshArCards();
   updateHud();
+  report({ current: null, tries: 0, lastSolved: t.name });
   if (S.mode === 'sim') renderSim();
 
   if (allDone && !t.bonus) {
@@ -928,6 +964,7 @@ function finishGame(escaped, reason = '') {
   S.progress.escaped = escaped;
   S.progress.reason = reason;
   persist();
+  report({ current: null, tries: 0, reason });
   stopTimer();
   closeSheet();
 
