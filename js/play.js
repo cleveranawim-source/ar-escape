@@ -157,40 +157,51 @@ function showStart() {
   );
 
   const goBtn = $('#s-go');
+  goBtn.disabled = false;
+  goBtn.textContent = '카메라 켜고 시작하기';
   if (!sc.mind) {
     goBtn.disabled = true;
     goBtn.textContent = 'AR 타겟이 컴파일되지 않았습니다';
   }
-  goBtn.onclick = () => startGame('ar');
-  $('#s-sim').onclick = () => startGame('sim');
 
-  // 이어하기
+  /* 이어하기는 묻지 않고 자동이다.
+     야외에서 튕겼다 들어온 학생에게 "이어할래?" 를 물으면, 급한 마음에
+     맨 위 큰 버튼을 눌러 풀어 놓은 문제와 시간을 통째로 날린다.
+     그래서 저장된 진행이 있으면 그냥 이어서 시작하고, 되돌릴 길만 열어 둔다. */
   const saved = loadProgress(sc.id);
+  const canResume = !!(saved && !saved.finished);
+
+  if (canResume && saved.team) $('#s-team').value = saved.team;
+  if (canResume && sc.mind) goBtn.textContent = '이어서 시작하기';
+
+  goBtn.onclick = () => startGame('ar', canResume ? saved : null);
+  $('#s-sim').onclick = () => startGame('sim', canResume ? saved : null);
+
   const resume = $('#s-resume');
   resume.innerHTML = '';
-  if (saved && !saved.finished && Object.keys(saved.solved || {}).length) {
-    resume.append(el('div', { class: 'card', style: { padding: '14px' } }, [
-      el('div', { class: 'row spread' }, [
-        el('div', {}, [
-          el('div', { class: 'small', style: { fontWeight: '800' } }, [`이어하기: ${saved.team || '이름 없음'}`]),
-          el('div', { class: 'tiny dim' }, [`${Object.keys(saved.solved).length}/${sc.targets.length}개 해제됨`]),
+  if (canResume) {
+    const done = Object.keys(saved.solved || {}).length;
+    resume.append(el('div', {
+      class: 'card',
+      style: { padding: '13px 15px', marginBottom: '16px', borderColor: 'var(--neon-dim)' },
+    }, [
+      el('div', { class: 'row spread', style: { gap: '10px' } }, [
+        el('div', { class: 'grow' }, [
+          el('div', { class: 'small', style: { fontWeight: '800', color: 'var(--neon)' } }, ['↩ 하던 곳에서 이어집니다']),
+          el('div', { class: 'tiny dim', style: { marginTop: '2px' } }, [
+            `${done}/${sc.targets.filter(t => !t.bonus).length}개 해제 · ${fmtClock(saved.pausedElapsedMs || 0)} 경과`,
+          ]),
         ]),
-        el('div', { class: 'row' }, [
-          el('button', {
-            class: 'btn btn-sm btn-ghost',
-            onclick: async () => {
-              if (await confirmDialog('진행 초기화', '저장된 진행 상황을 지울까요?', { okLabel: '지우기', danger: true })) {
-                clearProgress(sc.id);
-                resume.innerHTML = '';
-                toast('초기화했습니다.');
-              }
-            },
-          }, ['초기화']),
-          el('button', {
-            class: 'btn btn-sm btn-primary',
-            onclick: () => startGame(sc.mind ? 'ar' : 'sim', saved),
-          }, ['이어하기']),
-        ]),
+        el('button', {
+          class: 'btn btn-sm btn-ghost nowrap',
+          onclick: async () => {
+            if (await confirmDialog('처음부터 다시',
+              '지금까지 푼 문제와 시간이 모두 사라집니다. 다시 시작할까요?', { okLabel: '다시 시작', danger: true })) {
+              clearProgress(sc.id);
+              location.reload();
+            }
+          },
+        }, ['처음부터']),
       ]),
     ]));
   }
@@ -212,6 +223,7 @@ async function startGame(mode, resumeProgress = null) {
     // 여기에 penaltyMs 를 또 더하면 이어할 때마다 벌점이 이중으로 쌓인다.
     S.progress = {
       ...resumeProgress,
+      team,
       startedAt: Date.now(),
       penaltyMs: resumeProgress.pausedElapsedMs ?? resumeProgress.penaltyMs ?? 0,
       finished: false,
@@ -228,6 +240,11 @@ async function startGame(mode, resumeProgress = null) {
     };
   }
   persist();
+
+  if (resumeProgress) {
+    const done = Object.keys(S.progress.solved || {}).length;
+    toast(`${fmtClock(S.progress.penaltyMs)}부터 이어서 진행합니다 · ${done}개 해제됨`, 'ok', 4000);
+  }
 
   S.reporter = createReporter({
     room: S.room,
@@ -914,6 +931,17 @@ function openMenu() {
         el('button', {
           class: 'btn btn-block', onclick: () => { close(); toast('단서 이미지 전체가 화면에 들어오게, 밝은 곳에서 비춰 보세요.', '', 4200); },
         }, ['❓ 인식이 안 될 때']),
+        el('button', {
+          class: 'btn btn-block',
+          onclick: async () => {
+            close();
+            if (await confirmDialog('처음부터 다시',
+              '지금까지 푼 문제와 시간이 모두 사라집니다. 다시 시작할까요?', { okLabel: '다시 시작', danger: true })) {
+              clearProgress(S.scenario.id);
+              location.reload();
+            }
+          },
+        }, ['🔄 처음부터 다시']),
         el('button', {
           class: 'btn btn-block btn-danger',
           onclick: async () => {
