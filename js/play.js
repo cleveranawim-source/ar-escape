@@ -468,7 +468,9 @@ function closeSheet() {
   }
   // 닫힘 애니메이션 뒤 내용을 비운다. 그 사이 다른 시트가 열렸으면(세대 번호가 바뀜) 건드리지 않는다.
   // 'open' 클래스는 rAF 뒤에 붙으므로 그것만 보고 판단하면 20ms 남짓의 경쟁이 생긴다.
-  report({ current: null, tries: 0 });
+  // since 를 같이 지운다. 남겨 두면 문제를 닫고 마커를 찾아 돌아다니는 중에도
+  // "3분 넘게 한 문제에 붙어 있음" 으로 잘못 판정되어 현황판이 빨갛게 깜빡인다.
+  report({ current: null, tries: 0, since: null });
   const gen = ++S.sheetGen;
   setTimeout(() => { if (gen === S.sheetGen) sheet().innerHTML = ''; }, 400);
 }
@@ -697,7 +699,7 @@ function onCorrect(t, index, state, ui) {
 
   refreshArCards();
   updateHud();
-  report({ current: null, tries: 0, lastSolved: t.name });
+  report({ current: null, tries: 0, since: null, lastSolved: t.name });
   if (S.mode === 'sim') renderSim();
 
   if (allDone && !t.bonus) {
@@ -830,9 +832,14 @@ function openFinalLock() {
 function startTimer() {
   stopTimer();
   let lastPersistAt = Date.now();
+  let lastReportAt = Date.now();
   S.timerId = setInterval(() => {
     updateHud();
     if (Date.now() - lastPersistAt >= 15000) { lastPersistAt = Date.now(); persist(); }
+    // 아무것도 풀지 않아도 살아 있다는 신호는 보낸다.
+    // 이게 없으면 마커를 찾아 돌아다니는 동안 현황판에서 시간이 멈추고
+    // 「신호 없음」 으로 흐려진다. 끊겼던 와이파이가 붙었을 때 복구되는 통로이기도 하다.
+    if (!S.progress?.finished && Date.now() - lastReportAt >= 25000) { lastReportAt = Date.now(); report(); }
     const rem = remainingMs();
     if (rem !== Infinity && rem <= 0 && !S.timeUpHandled) {
       S.timeUpHandled = true;
@@ -964,7 +971,7 @@ function finishGame(escaped, reason = '') {
   S.progress.escaped = escaped;
   S.progress.reason = reason;
   persist();
-  report({ current: null, tries: 0, reason });
+  report({ current: null, tries: 0, since: null, reason });
   stopTimer();
   closeSheet();
 

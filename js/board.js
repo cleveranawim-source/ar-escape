@@ -14,15 +14,15 @@ const SRC_KEY = 'ar-escape:board-src';
 /* 막힘 판정 — 한 문제에서 3번 넘게 틀렸거나 3분 넘게 붙어 있으면 */
 const STUCK_TRIES = 3;
 const STUCK_MS = 180000;
-/* 이 시간 넘게 소식이 없으면 태블릿이 꺼졌거나 자리를 뜬 것 */
-const STALE_MS = 90000;
+/* 이 시간 넘게 소식이 없으면 정말 끊긴 것.
+   학생 기기가 25초마다 신호를 보내므로 네 번 넘게 빠진 셈이다.
+   야외에서 와이파이가 오락가락하는 걸 감안해 넉넉히 잡는다. */
+const STALE_MS = 120000;
 
 const B = {
   room: null,
   watcher: null,
   state: {},
-  /** 팀별로 값을 받은 로컬 시각 — 기기 간 시계 차이를 피하려고 여기서부터 이어 센다 */
-  seenAt: new Map(),
   tickId: null,
 };
 
@@ -33,7 +33,6 @@ const B = {
 async function connect(room) {
   B.watcher?.close();
   B.state = {};
-  B.seenAt.clear();
   B.room = room;
   render();
 
@@ -51,12 +50,6 @@ async function connect(room) {
   if (problem === 'network') { setConn('off', '네트워크에 연결할 수 없습니다'); return; }
   if (problem) { setConn('off', problem); return; }
   B.watcher = watchRoom(room, state => {
-    const now = Date.now();
-    for (const name of Object.keys(state.teams || {})) {
-      const prev = B.state.teams?.[name];
-      const cur = state.teams[name];
-      if (!prev || prev.at !== cur.at) B.seenAt.set(name, now);
-    }
     B.state = state;
     setConn('on', '연결됨');
     render();
@@ -80,11 +73,16 @@ function teamRows() {
   const teams = B.state.teams || {};
   const now = Date.now();
   return Object.entries(teams).map(([key, t]) => {
-    const seen = B.seenAt.get(key) || now;
     const running = !t.finished;
-    // 보낸 시점의 경과 + 그 값을 받은 뒤 흐른 시간
-    const elapsed = running ? (t.elapsedMs || 0) + (now - seen) : (t.elapsedMs || 0);
-    const stuck = running && ((t.tries || 0) >= STUCK_TRIES || (t.since && now - t.since > STUCK_MS));
+    // 값을 "받은 시각" 이 아니라 학생이 "보낸 시각(at)" 을 기준으로 센다.
+    // 받은 시각을 쓰면 현황판을 새로고침할 때마다 기준이 지금으로 초기화되어,
+    // 한동안 조용했던 조의 시간이 그만큼 뒤로 감긴다.
+    const sentAgo = Math.min(Math.max(0, now - (t.at || now)), 6 * 3600000);
+    const elapsed = running ? (t.elapsedMs || 0) + sentAgo : (t.elapsedMs || 0);
+    // 문제를 열어 둔 상태에서만 "오래 붙잡고 있음" 을 따진다.
+    // 닫고 마커를 찾아 돌아다니는 중까지 막힘으로 잡으면 야외 활동에서는 거의 다 빨개진다.
+    const stuck = running && !!t.current
+      && ((t.tries || 0) >= STUCK_TRIES || (t.since && now - t.since > STUCK_MS));
     return {
       key,
       name: t.name || key,
@@ -101,7 +99,8 @@ function teamRows() {
       mode: t.mode,
       elapsed,
       stuck,
-      stale: running && now - seen > STALE_MS,
+      stale: running && sentAgo > STALE_MS,
+      quietMin: Math.max(1, Math.floor(sentAgo / 60000)),
     };
   }).sort((a, b) => {
     if (a.escaped !== b.escaped) return a.escaped ? -1 : 1;       // 탈출한 팀 먼저
@@ -132,7 +131,7 @@ function render() {
       : r.finished
         ? el('span', { class: 'badge' }, ['종료'])
         : r.stale
-          ? el('span', { class: 'badge gray' }, ['신호 없음'])
+          ? el('span', { class: 'badge gray' }, [`신호 끊김 · ${r.quietMin}분째`])
           : r.stuck
             ? el('span', { class: 'badge danger' }, ['막힘'])
             : el('span', { class: 'badge ok' }, ['진행 중']);
@@ -256,12 +255,12 @@ function boot() {
   $('#btn-clear').onclick = async () => {
     const room = $('#f-room').value.trim();
     if (!room) return;
+    B.state = {};
     if (!await confirmDialog('기록 지우기', `"${room}" 방의 모둠 기록을 모두 지울까요? 되돌릴 수 없습니다.`,
       { okLabel: '지우기', danger: true })) return;
     try {
       await clearRoom(room);
       B.state = {};
-      B.seenAt.clear();
       render();
       toast('지웠습니다. 다음 반을 시작하세요.', 'ok');
     } catch (e) {

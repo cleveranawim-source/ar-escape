@@ -31,6 +31,7 @@ export function createReporter({ room, team, meta } = {}) {
   let pending = null;
   let sending = false;
   let fails = 0;
+  let retryTimer = null;
 
   // 방 정보는 한 번만 (대시보드 제목용)
   if (meta) {
@@ -46,6 +47,7 @@ export function createReporter({ room, team, meta } = {}) {
     sending = true;
     const body = pending;
     pending = null;
+    let ok = false;
     try {
       const res = await fetch(url, {
         method: 'PATCH',
@@ -55,11 +57,20 @@ export function createReporter({ room, team, meta } = {}) {
       });
       if (!res.ok) throw new Error(String(res.status));
       fails = 0;
+      ok = true;
     } catch {
+      // 야외에서 와이파이가 오락가락한다. 실패한 내용을 버리면 그 팀은
+      // 다음에 뭔가 풀 때까지 현황판에 멈춰 있으므로, 되돌려 넣고 다시 시도한다.
+      // 그 사이 들어온 새 값이 우선이다.
       fails++;
+      pending = { ...body, ...(pending || {}) };
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(flush, Math.min(15000, 1000 * 2 ** Math.min(fails, 4)));
     }
     sending = false;
-    if (pending) flush();
+    // 성공했을 때만 곧바로 이어서 보낸다. 실패한 경우까지 여기서 다시 부르면
+    // 오프라인처럼 fetch 가 즉시 거절될 때 지연 없는 무한 재귀가 되어 화면이 멈춘다.
+    if (ok && pending) flush();
   }
 
   return {
