@@ -9,7 +9,7 @@
    비워 두면 전송 코드가 아예 돌지 않고 게임은 지금과 똑같이 동작한다.
    ============================================================ */
 
-export const DB_URL = '';   // 예: 'https://ar-escape-1234-default-rtdb.asia-southeast1.firebasedatabase.app'
+export const DB_URL = 'https://ar-roomescape-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 export const liveEnabled = () => !!DB_URL;
 
@@ -125,6 +125,23 @@ export function watchRoom(room, onState, onStatus = () => {}) {
   src.addEventListener('patch', apply(mergePath));
 
   return { close: () => src.close() };
+}
+
+/**
+ * 접속 가능한지 미리 확인한다. EventSource 는 HTTP 상태를 알려주지 않아서,
+ * 규칙이 잠겨 있을 때 "연결이 끊겼습니다" 로만 보이면 원인을 알 수 없다.
+ * @returns {Promise<null|'rules'|'network'|string>}
+ */
+export async function checkAccess(room) {
+  if (!DB_URL) return 'setup';
+  try {
+    const res = await fetch(`${roomBase(room || '_probe')}.json?shallow=true`);
+    if (res.status === 401 || res.status === 403) return 'rules';
+    if (!res.ok) return `서버가 ${res.status} 를 돌려주었습니다.`;
+    return null;
+  } catch {
+    return 'network';
+  }
 }
 
 /** 방 기록을 통째로 지운다 (다음 반 시작 전) */

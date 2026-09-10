@@ -6,7 +6,7 @@
    ============================================================ */
 
 import { $, el, toast, fmtClock, confirmDialog } from './util.js';
-import { DB_URL, liveEnabled, watchRoom, clearRoom } from './live.js';
+import { DB_URL, liveEnabled, watchRoom, clearRoom, checkAccess } from './live.js';
 
 const ROOM_KEY = 'ar-escape:board-room';
 const SRC_KEY = 'ar-escape:board-src';
@@ -30,7 +30,7 @@ const B = {
    구독
    ============================================================ */
 
-function connect(room) {
+async function connect(room) {
   B.watcher?.close();
   B.state = {};
   B.seenAt.clear();
@@ -40,6 +40,16 @@ function connect(room) {
   if (!liveEnabled() || !room) { setConn('off', liveEnabled() ? '방 코드를 입력하세요' : '설정 필요'); return; }
 
   setConn('', '연결 중…');
+
+  // 규칙이 잠겨 있으면 EventSource 는 그냥 실패만 알려준다 → 먼저 짚어 준다
+  const problem = await checkAccess(room);
+  $('#rules-card').hidden = problem !== 'rules';
+  if (problem === 'rules') {
+    setConn('off', '데이터베이스 규칙이 잠겨 있습니다');
+    return;
+  }
+  if (problem === 'network') { setConn('off', '네트워크에 연결할 수 없습니다'); return; }
+  if (problem) { setConn('off', problem); return; }
   B.watcher = watchRoom(room, state => {
     const now = Date.now();
     for (const name of Object.keys(state.teams || {})) {
@@ -187,8 +197,38 @@ function refreshLink() {
   $('#btn-copy').disabled = !link;
 }
 
+const RULES = `{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": "$room.length <= 24",
+        ".write": "$room.length <= 24",
+        "meta": {
+          "title": { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "$f": { ".validate": "newData.isNumber()" }
+        },
+        "teams": {
+          "$team": {
+            ".validate": "$team.length <= 24 && newData.hasChildren(['name'])",
+            "name":       { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "current":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "lastSolved": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "mode":       { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "reason":     { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "$f":         { ".validate": "newData.isNumber() || newData.isBoolean()" }
+          }
+        }
+      }
+    }
+  }
+}`;
+
 function boot() {
   $('#setup-card').hidden = liveEnabled();
+  $('#rules-json').textContent = RULES;
+  $('#btn-copy-rules').onclick = () => navigator.clipboard?.writeText(RULES)
+    .then(() => toast('규칙을 복사했습니다. Firebase 콘솔 → 규칙 탭에 붙여넣고 게시하세요.', 'ok', 4500))
+    .catch(() => toast('복사에 실패했습니다.', 'err'));
 
   const params = new URLSearchParams(location.search);
   $('#f-room').value = params.get('room') || localStorage.getItem(ROOM_KEY) || '';
