@@ -138,6 +138,38 @@ export function watchRoom(room, onState, onStatus = () => {}) {
   return { close: () => src.close() };
 }
 
+/* ============================================================
+   복귀 시각 — 야외 활동에서 "언제 교실로 돌아오나"
+   ------------------------------------------------------------
+   경과 시간이 아니라 절대 시각을 공유한다. 그래야 튕겨서 다시 들어와도,
+   늦게 시작해도, 새로고침해도 모두 같은 시각에 돌아온다.
+   ============================================================ */
+
+/* 기기 시계가 틀어져 있어도 복귀 시각이 어긋나지 않도록 서버 시계와의 차이를 재 둔다.
+   Firebase 응답의 Date 헤더는 CORS 기본 허용이라 그냥 읽을 수 있다. (초 단위면 충분) */
+let clockOffset = 0;
+export const serverNow = () => Date.now() + clockOffset;
+
+/** 방 설정을 한 번 읽는다. 학생 기기가 주기적으로 불러 복귀 시각을 받아 간다. */
+export async function fetchRoomMeta(room) {
+  if (!DB_URL || !room) return null;
+  const res = await fetch(`${roomBase(room)}/meta.json`, { cache: 'no-store' });
+  const at = Date.parse(res.headers.get('Date') || '');
+  if (Number.isFinite(at)) clockOffset = at - Date.now();
+  if (!res.ok) throw new Error(String(res.status));
+  return await res.json();
+}
+
+/** 복귀 시각을 정한다. null 이면 해제. */
+export async function setReturnAt(room, ts) {
+  const res = await fetch(`${roomBase(room)}/meta.json`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ returnAt: ts ?? null }),
+  });
+  if (!res.ok) throw new Error(`복귀 시각을 저장하지 못했습니다 (${res.status})`);
+}
+
 /**
  * 접속 가능한지 미리 확인한다. EventSource 는 HTTP 상태를 알려주지 않아서,
  * 규칙이 잠겨 있을 때 "연결이 끊겼습니다" 로만 보이면 원인을 알 수 없다.

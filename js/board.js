@@ -6,7 +6,7 @@
    ============================================================ */
 
 import { $, el, toast, fmtClock, confirmDialog } from './util.js';
-import { DB_URL, liveEnabled, watchRoom, clearRoom, checkAccess } from './live.js';
+import { DB_URL, liveEnabled, watchRoom, clearRoom, checkAccess, setReturnAt, fetchRoomMeta, serverNow } from './live.js';
 
 const ROOM_KEY = 'ar-escape:board-room';
 const SRC_KEY = 'ar-escape:board-src';
@@ -24,6 +24,7 @@ const B = {
   watcher: null,
   state: {},
   tickId: null,
+  returnAt: null,
 };
 
 /* ============================================================
@@ -49,8 +50,12 @@ async function connect(room) {
   }
   if (problem === 'network') { setConn('off', '네트워크에 연결할 수 없습니다'); return; }
   if (problem) { setConn('off', problem); return; }
+  fetchRoomMeta(room).then(m => { B.returnAt = Number(m?.returnAt) || null; renderReturn(); }).catch(() => {});
+
   B.watcher = watchRoom(room, state => {
     B.state = state;
+    const next = Number(state.meta?.returnAt) || null;
+    if (next !== B.returnAt) { B.returnAt = next; renderReturn(); }
     setConn('on', '연결됨');
     render();
   }, err => {
@@ -168,11 +173,43 @@ function render() {
   }
 }
 
+/* ============================================================
+   복귀 시각
+   ============================================================ */
+
+const fmtHM = ts => new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+function renderReturn() {
+  const on = !!B.returnAt;
+  $('#return-off').hidden = on;
+  $('#return-on').hidden = !on;
+  if (!on) return;
+  const left = B.returnAt - serverNow();
+  const el2 = $('#return-count');
+  el2.textContent = left > 0 ? fmtClock(left) : '지금';
+  el2.style.color = left <= 120000 ? 'var(--danger)' : 'var(--gold)';
+  $('#return-when').textContent = `${fmtHM(B.returnAt)}까지`;
+}
+
+async function applyReturn(ts) {
+  const room = $('#f-room').value.trim();
+  if (!room) { toast('방 코드를 먼저 입력하세요.', 'err'); return; }
+  try {
+    await setReturnAt(room, ts);
+    B.returnAt = ts;
+    renderReturn();
+    toast(ts ? `복귀 시각을 ${fmtHM(ts)} 으로 알렸습니다.` : '복귀 시각을 해제했습니다.', 'ok');
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
 /* 경과 시간을 1초마다 다시 그린다 (진행 중인 팀이 있을 때만) */
 function startTick() {
   clearInterval(B.tickId);
   B.tickId = setInterval(() => {
     if (Object.keys(B.state.teams || {}).length) render();
+    renderReturn();
   }, 1000);
 }
 
@@ -267,6 +304,23 @@ function boot() {
       toast(e.message, 'err');
     }
   };
+
+  document.querySelectorAll('#return-off [data-mins]').forEach(b => {
+    b.onclick = () => applyReturn(serverNow() + Number(b.dataset.mins) * 60000);
+  });
+  $('#btn-return-set').onclick = () => {
+    const v = $('#f-return').value;
+    if (!v) { toast('시각을 입력하세요.', 'err'); return; }
+    const [h, m] = v.split(':').map(Number);
+    const d = new Date(serverNow());
+    d.setHours(h, m, 0, 0);
+    // 이미 지난 시각이면 내일이 아니라 오늘 그대로 둔다 (수업 중 실수 방지)
+    applyReturn(d.getTime());
+  };
+  $('#btn-return-plus').onclick = () => applyReturn((B.returnAt || serverNow()) + 5 * 60000);
+  $('#btn-return-minus').onclick = () => applyReturn((B.returnAt || serverNow()) - 5 * 60000);
+  $('#btn-return-clear').onclick = () => applyReturn(null);
+  renderReturn();
 
   connect($('#f-room').value.trim());
   startTick();

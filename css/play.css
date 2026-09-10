@@ -84,6 +84,24 @@ html.a-fullscreen.ar-on body { background: transparent !important; }
 .scan-hint b { color: var(--neon); }
 .scan-hint[hidden] { display: none; }
 
+/* 복귀 시각 안내 — 야외에서 화면만 봐도 알아채게 크게 */
+.return-bar {
+  position: fixed; z-index: 150;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + var(--safe-b));
+  text-align: center;
+  background: rgba(255, 201, 77, .16); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 201, 77, .5); color: var(--gold);
+  border-radius: 14px; padding: 9px 16px;
+  font-size: 14.5px; font-weight: 800; max-width: 360px;
+}
+.return-bar[hidden] { display: none; }
+.return-bar.now {
+  background: rgba(255, 95, 109, .2); border-color: rgba(255, 95, 109, .65); color: #ffc0c6;
+  font-size: 17px; animation: returnPulse 1.4s ease-in-out infinite;
+}
+@keyframes returnPulse { 50% { box-shadow: 0 0 26px rgba(255, 95, 109, .5); } }
+
 /* 단서 발견 → 문제 열기 */
 .found-bar {
   margin: auto 0 0; display: flex; align-items: center; gap: 12px;

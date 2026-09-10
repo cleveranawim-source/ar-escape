@@ -12,7 +12,7 @@ import {
   loadProgress, saveProgress, clearProgress, addRecord, listRecords,
 } from './store.js';
 import { ArEngine, loadArRuntime, normalizeCameraError } from './ar.js';
-import { createReporter } from './live.js';
+import { createReporter, fetchRoomMeta, serverNow } from './live.js';
 
 /* ============================================================
    상태
@@ -31,6 +31,8 @@ const S = {
   sheetGen: 0,        // 시트 세대 번호 — 닫힘 뒤 정리가 새로 열린 시트를 지우지 않게
   room: null,         // ?room= 이 있으면 교사 현황판으로 진행 상황을 보낸다
   reporter: null,
+  returnAt: null,     // 교사가 현황판에서 정한 복귀 시각 (절대 시각)
+  returnWarned: {},   // 5분 전·2분 전·정각 알림을 한 번씩만
   timeUpHandled: false,
 };
 
@@ -252,6 +254,7 @@ async function startGame(mode, resumeProgress = null) {
     meta: { title: S.scenario.title, total: totalCount(), bonusTotal: bonusTargets().length },
   });
   report({ current: null, tries: 0 });
+  pullRoomMeta();
 
   $('#screen-start').hidden = true;
   beep('found');
@@ -282,6 +285,52 @@ function report(extra = {}) {
     mode: S.mode,
     ...extra,
   });
+}
+
+/* 교사가 현황판에서 정한 복귀 시각을 받아 온다.
+   SSE 로 붙으면 태블릿 수만큼 동시 연결이 생기므로, 주기 신호에 얹어 가볍게 확인한다. */
+async function pullRoomMeta() {
+  if (!S.room) return;
+  try {
+    const meta = await fetchRoomMeta(S.room);
+    const next = Number(meta?.returnAt) || null;
+    if (next !== S.returnAt) {
+      const later = S.returnAt && next && next > S.returnAt;
+      S.returnAt = next;
+      S.returnWarned = {};
+      if (next) toast(later ? '시간이 연장되었습니다.' : `복귀 시각이 정해졌습니다 — ${fmtHM(next)}`, 'ok', 3500);
+    }
+  } catch { /* 와이파이가 끊긴 동안은 마지막 값을 그대로 쓴다 */ }
+}
+
+const fmtHM = ts => new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+/** 복귀까지 남은 시간. 교사가 정하지 않았으면 null */
+function returnLeftMs() {
+  return S.returnAt ? S.returnAt - serverNow() : null;
+}
+
+/* 밖에 있으면 화면을 계속 보지 않는다. 진동과 소리로 함께 알린다. */
+function updateReturnBar() {
+  const bar = $('#return-bar');
+  if (!bar) return;
+  const left = returnLeftMs();
+  const busy = sheet().classList.contains('open') || S.progress?.finished;
+  if (left === null || busy) { bar.hidden = true; return; }
+
+  bar.hidden = false;
+  const due = left <= 0;
+  bar.classList.toggle('now', due);
+  $('#return-text').textContent = due
+    ? '🏫 교실로 돌아가세요'
+    : `🏫 ${fmtHM(S.returnAt)}까지 교실로 · ${fmtClock(left)} 남음`;
+
+  const key = due ? 'now' : left <= 120000 ? 'm2' : left <= 300000 ? 'm5' : null;
+  if (key && !S.returnWarned[key]) {
+    S.returnWarned[key] = true;
+    if (due) { beep('fail'); vibrate([180, 90, 180, 90, 300]); toast('🏫 교실로 돌아가세요', 'err', 6000); }
+    else { beep('tick'); vibrate([90, 60, 90]); toast(`🏫 복귀까지 ${key === 'm2' ? '2분' : '5분'} 남았습니다`, 'err', 5000); }
+  }
 }
 
 function persist() {
@@ -488,6 +537,7 @@ function closeSheet() {
   // since 를 같이 지운다. 남겨 두면 문제를 닫고 마커를 찾아 돌아다니는 중에도
   // "3분 넘게 한 문제에 붙어 있음" 으로 잘못 판정되어 현황판이 빨갛게 깜빡인다.
   report({ current: null, tries: 0, since: null });
+  setTimeout(updateReturnBar, 420);
   const gen = ++S.sheetGen;
   setTimeout(() => { if (gen === S.sheetGen) sheet().innerHTML = ''; }, 400);
 }
@@ -856,7 +906,11 @@ function startTimer() {
     // 아무것도 풀지 않아도 살아 있다는 신호는 보낸다.
     // 이게 없으면 마커를 찾아 돌아다니는 동안 현황판에서 시간이 멈추고
     // 「신호 없음」 으로 흐려진다. 끊겼던 와이파이가 붙었을 때 복구되는 통로이기도 하다.
-    if (!S.progress?.finished && Date.now() - lastReportAt >= 25000) { lastReportAt = Date.now(); report(); }
+    if (!S.progress?.finished && Date.now() - lastReportAt >= 25000) {
+      lastReportAt = Date.now();
+      report();
+      pullRoomMeta();
+    }
     const rem = remainingMs();
     if (rem !== Infinity && rem <= 0 && !S.timeUpHandled) {
       S.timeUpHandled = true;
@@ -873,6 +927,7 @@ function stopTimer() {
 
 function updateHud() {
   if (!S.scenario || !S.progress) return;
+  updateReturnBar();
   const done = solvedCount();
   const total = totalCount();
   const pct = total ? (done / total) * 100 : 0;
@@ -1024,6 +1079,7 @@ function finishGame(escaped, reason = '') {
   $('#hud').hidden = true;
   $('#reticle').hidden = true;
   $('#screen-sim').hidden = true;
+  $('#return-bar').hidden = true;
   renderResult(escaped, reason);
 }
 

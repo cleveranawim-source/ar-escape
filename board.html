@@ -151,6 +151,49 @@
     </div>
   </div>
 
+  <!-- 복귀 시각 -->
+  <div class="card" id="return-card">
+    <div class="card-hd">
+      <h3>🏫 복귀 시각</h3>
+      <span class="tiny dim">밖에 있는 모든 기기에 함께 적용됩니다</span>
+    </div>
+    <p class="muted small" style="margin-top:0">
+      정해 두면 학생 화면에 <b>「10시 40분까지 교실로 · N분 남음」</b>이 뜨고,
+      5분 전·2분 전·정각에 진동과 소리로 알립니다. 튕겨서 다시 들어와도 같은 시각이 유지됩니다.
+    </p>
+
+    <div id="return-off">
+      <div class="row row-wrap" style="margin-bottom:10px">
+        <button class="btn btn-sm" data-mins="15">지금부터 15분</button>
+        <button class="btn btn-sm" data-mins="20">20분</button>
+        <button class="btn btn-sm" data-mins="25">25분</button>
+        <button class="btn btn-sm" data-mins="30">30분</button>
+      </div>
+      <div class="row row-wrap">
+        <label class="field" style="margin:0;flex:1;min-width:150px">
+          <span class="lb">시각으로 정하기</span>
+          <input type="time" id="f-return">
+        </label>
+        <button class="btn btn-primary" id="btn-return-set" style="align-self:flex-end">설정</button>
+      </div>
+    </div>
+
+    <div id="return-on" hidden>
+      <div class="row spread row-wrap" style="gap:12px">
+        <div>
+          <div class="tiny dim" style="font-weight:800">복귀까지</div>
+          <div class="mono" id="return-count" style="font-size:38px;font-weight:900;line-height:1.1;color:var(--gold)">--:--</div>
+          <div class="tiny dim" id="return-when"></div>
+        </div>
+        <div class="row row-wrap">
+          <button class="btn btn-sm" id="btn-return-minus">−5분</button>
+          <button class="btn btn-sm btn-gold" id="btn-return-plus">+5분 연장</button>
+          <button class="btn btn-sm btn-ghost" id="btn-return-clear">해제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 요약 -->
   <div class="tally">
     <div><div class="v" id="t-teams">0</div><div class="k">참여 모둠</div></div>
