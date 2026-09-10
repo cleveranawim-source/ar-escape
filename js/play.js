@@ -30,6 +30,7 @@ const S = {
   pendingTimer: null,
   sheetGen: 0,        // 시트 세대 번호 — 닫힘 뒤 정리가 새로 열린 시트를 지우지 않게
   room: null,         // ?room= 이 있으면 교사 현황판으로 진행 상황을 보낸다
+  forcePractice: false,
   reporter: null,
   returnAt: null,     // 교사가 현황판에서 정한 복귀 시각 (절대 시각)
   returnWarned: {},   // 5분 전·2분 전·정각 알림을 한 번씩만
@@ -65,6 +66,7 @@ async function boot() {
   const src = params.get('src');
   const id = params.get('id');
   S.room = params.get('room');
+  S.forcePractice = params.get('practice') === '1';
 
   try {
     if (src) {
@@ -165,6 +167,13 @@ function showStart() {
     goBtn.disabled = true;
     goBtn.textContent = 'AR 타겟이 컴파일되지 않았습니다';
   }
+
+  /* 연습 모드는 단서 사진을 전부 격자로 펼쳐 놓는다. 야외 활동에서는
+     "어디로 가야 하는지" 를 통째로 알려주는 셈이고, 눌러서 문제까지 풀 수 있어
+     밖에 나가지 않고도 탈출이 된다. 그래서 수업 중(방 코드가 있을 때)에는 감춘다.
+     카메라가 실제로 실패했을 때는 오류 창에서 그대로 제공하므로 구제책은 남는다. */
+  const practiceOk = !sc.mind || !S.room || S.forcePractice;
+  $('#s-sim').hidden = !practiceOk;
 
   /* 이어하기는 묻지 않고 자동이다.
      야외에서 튕겼다 들어온 학생에게 "이어할래?" 를 물으면, 급한 마음에

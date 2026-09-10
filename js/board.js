@@ -158,7 +158,7 @@ function render() {
         r.bonusTotal ? el('span', { class: r.bonus ? 'badge gold' : 'badge gray' },
           [r.bonus ? '🎁 보너스 성공' : '🎁 미도전']) : null,
         r.hints ? el('span', { class: 'tiny dim' }, [`힌트 ${r.hints}회`]) : null,
-        r.mode === 'sim' ? el('span', { class: 'tiny dim' }, ['연습 모드']) : null,
+        r.mode === 'sim' ? el('span', { class: 'badge gold' }, ['⚠️ 연습 모드']) : null,
       ]),
 
       r.current && !r.finished
