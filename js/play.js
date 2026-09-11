@@ -1245,4 +1245,23 @@ function confetti() {
 window.addEventListener('beforeunload', () => { persist(); S.engine?.stop(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
 
+/* 배포 직후 학생 기기에 옛 코드가 남아 있으면 고친 것이 적용되지 않는다.
+   새 서비스워커가 자리를 잡으면 알려 주므로, 아직 게임을 시작하지 않았을 때만
+   조용히 새로고침해서 최신 코드로 바꿔 단다. (진행 중에는 건드리지 않는다) */
+navigator.serviceWorker?.addEventListener('message', e => {
+  if (e.data?.type === 'sw-updated' && !S.progress) location.reload();
+});
+
+/** 이 기기가 어떤 버전을 돌리고 있는지 시작 화면 구석에 적는다 */
+async function showVersion() {
+  const slot = $('#app-ver');
+  if (!slot) return;
+  try {
+    const keys = await caches.keys();
+    const v = keys.find(k => k.startsWith('ar-escape-'));
+    slot.textContent = v ? v.replace('ar-escape-', '') : '캐시 없음';
+  } catch { slot.textContent = ''; }
+}
+showVersion();
+
 boot();

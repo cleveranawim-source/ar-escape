@@ -13,7 +13,7 @@
    파일을 배포한 뒤 캐시를 강제로 비우려면 VERSION 을 올린다.
    ============================================================ */
 
-const VERSION = 'ar-escape-v11';
+const VERSION = 'ar-escape-v12';
 
 const SHELL = [
   './',
@@ -38,8 +38,18 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      .then(async () => {
+        // 새 버전이 올라왔다고 알린다. 열려 있는 화면이 스스로 최신 코드로 바꿔 달게.
+        for (const c of await self.clients.matchAll({ type: 'window' })) {
+          c.postMessage({ type: 'sw-updated', version: VERSION });
+        }
+      }),
   );
+});
+
+self.addEventListener('message', e => {
+  if (e.data?.type === 'version') e.source?.postMessage({ type: 'version', version: VERSION });
 });
 
 function keep(req, res) {
