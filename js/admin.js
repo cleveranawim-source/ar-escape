@@ -168,7 +168,7 @@ function headerCard(sc) {
       ]),
       el('div', { class: 'row row-wrap' }, [
         el('a', {
-          class: 'btn btn-sm', href: `play.html?id=${sc.id}`, target: '_blank',
+          class: 'btn btn-sm', href: `play.html?id=${sc.id}&practice=1`, target: '_blank',
           onclick: () => { clearTimeout(A.saveTimer); flush(); },
         }, ['▶ 미리보기']),
         el('button', { class: 'btn btn-sm', onclick: exportScenario }, ['📤 내보내기']),
