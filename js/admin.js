@@ -254,7 +254,7 @@ function basicsCard(sc) {
           touch();
         },
       }, [
-        el('option', { value: 'auto', selected: sc.finalLock.mode === 'auto' }, ['자동 — 각 단서의 열쇠 조각을 순서대로 조합']),
+        el('option', { value: 'auto', selected: sc.finalLock.mode === 'auto' }, ['자동 — 조각을 다 모으면 암호가 저절로 맞춰짐']),
         el('option', { value: 'manual', selected: sc.finalLock.mode === 'manual' }, ['직접 입력']),
       ]),
     ]),
@@ -262,14 +262,14 @@ function basicsCard(sc) {
     manualWrap,
 
     el('label', { class: 'field' }, [
-      el('span', { class: 'lb' }, ['최종 자물쇠 안내문']),
+      el('span', { class: 'lb' }, ['최종 자물쇠 안내문 — 조각을 다 모으기 전에도 보입니다']),
       el('input', {
         type: 'text', value: sc.finalLock.question, placeholder: '예: 모은 조각을 순서대로 합치면 암호가 된다.',
         oninput: e => { sc.finalLock.question = e.target.value; touch(); },
       }),
     ]),
     el('label', { class: 'field' }, [
-      el('span', { class: 'lb' }, ['최종 자물쇠 힌트']),
+      el('span', { class: 'lb' }, ['최종 자물쇠 힌트 — 「직접 입력」 방식일 때만 쓰입니다']),
       el('input', {
         type: 'text', value: sc.finalLock.hint, placeholder: '예: 단서 번호 순서대로 배열하라.',
         oninput: e => { sc.finalLock.hint = e.target.value; touch(); },

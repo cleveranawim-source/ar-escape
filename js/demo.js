@@ -186,9 +186,9 @@ export async function buildDemoScenario(onProgress = () => {}) {
   sc.hintPenaltySec = 20;
   sc.finalLock = {
     mode: 'auto',
-    question: '문 옆 자물쇠에 다섯 글자를 입력하라.',
+    question: '다섯 개의 봉인을 모두 풀어야 문이 열린다.',
     answer: '',
-    hint: '단서 1번부터 5번까지, 얻은 글자를 순서대로 이어 붙여라.',
+    hint: '',
   };
 
   for (let i = 0; i < QUIZZES.length; i++) {

@@ -843,11 +843,6 @@ function openFinalLock() {
       el('div', { class: `slot${f.got ? ' filled' : ''}`, title: f.name }, [f.got ? (f.reward || '✔') : '?']),
     )));
 
-    if (!gotAll) {
-      box.append(el('p', { class: 'muted small center', style: { margin: '14px 0' } },
-        ['아직 모으지 못한 조각이 있습니다. 그래도 암호를 알아냈다면 입력해 보세요.']));
-    }
-
     const bonusLeft = unsolvedBonus();
     if (bonusLeft.length) {
       box.append(el('div', { class: 'hintbox', style: { marginTop: '10px' } }, [
@@ -855,6 +850,53 @@ function openFinalLock() {
         `${bonusLeft.map(t => t.name).join(', ')} — 아직 풀지 않았어요. 탈출하면 보너스는 끝납니다. `,
         el('button', { class: 'btn btn-sm btn-ghost', style: { marginLeft: '4px' }, onclick: closeSheet }, ['먼저 찾으러 가기']),
       ]));
+    }
+
+    /* 관문은 "암호를 맞히는 것" 이 아니라 "다섯 개를 모두 찾는 것" 이다.
+       예전에는 조각이 모자라도 암호를 추측해 입력하면 탈출할 수 있었는데,
+       제목이 「마음의 방」이고 힌트가 "다섯 글자" 라 충분히 찍을 수 있었다.
+       이제 조각을 다 모으기 전에는 자물쇠가 잠겨 있고, 다 모으면 암호가
+       저절로 맞춰지며 누르기만 하면 된다. 마지막 의식은 남기되 지름길만 막는다. */
+    if (!gotAll) {
+      const left = frags.filter(f => !f.got);
+      box.append(
+        el('div', { class: 'locked-note' }, [
+          el('div', { style: { fontSize: '34px', marginBottom: '6px' } }, ['🔒']),
+          el('div', { style: { fontWeight: '800', fontSize: '16px' } }, [`아직 ${left.length}개를 더 찾아야 합니다`]),
+          el('div', { class: 'small', style: { marginTop: '6px', color: 'var(--txt-2)' } },
+            [left.map(f => f.name).join(', ')]),
+        ]),
+        el('button', { class: 'btn btn-primary btn-block btn-lg', style: { marginTop: '14px' }, onclick: closeSheet },
+          ['남은 단서 찾으러 가기']),
+      );
+      return;
+    }
+
+    /* 조각을 이어 붙인 것이 곧 암호인 '자동 조합' 모드에서는 더 낼 문제가 없다.
+       조각이 다 모였으니 암호를 채워 두고 누르기만 하게 한다.
+       반면 교사가 암호를 '직접 입력' 해 둔 모드는 조각과 무관한 별도의 수수께끼이므로
+       채워 주면 답을 공짜로 주는 셈이다. 그때는 입력과 힌트를 그대로 남긴다. */
+    const auto = (sc.finalLock?.mode ?? 'auto') !== 'manual';
+
+    if (auto) {
+      box.append(el('p', { class: 'small center', style: { margin: '14px 0 4px', color: 'var(--ok)', fontWeight: '800' } },
+        ['✨ 조각이 모두 맞춰졌습니다']));
+
+      box.append(el('div', { style: { margin: '10px 0 14px' } }, [
+        el('input', {
+          type: 'text', value: expected, readonly: true, autocomplete: 'off',
+          style: {
+            textAlign: 'center', fontSize: '26px', fontWeight: '900', letterSpacing: '.14em',
+            color: 'var(--gold)', borderColor: 'rgba(255,201,77,.45)',
+          },
+        }),
+      ]));
+
+      box.append(el('button', {
+        class: 'btn btn-gold btn-block btn-lg',
+        onclick: () => { beep('ok'); vibrate([40, 60, 120]); finishGame(true); },
+      }, ['🔓 자물쇠 열고 탈출하기']));
+      return;
     }
 
     const input = el('input', {
@@ -876,14 +918,13 @@ function openFinalLock() {
         hintBtn.remove();
         hintSlot.append(el('div', { class: 'hintbox' }, [
           el('b', {}, ['💡 힌트 ']),
-          sc.finalLock.hint?.trim() || '수집한 조각을 단서 번호 순서대로 이어 붙여 보세요.',
+          sc.finalLock.hint?.trim() || '모은 조각을 단서에 맞춰 다시 살펴보세요.',
         ]));
       },
     }, ['💡 힌트']);
 
     const btn = el('button', { class: 'btn btn-gold grow btn-lg', disabled: true, onclick: () => tryUnlock() }, ['자물쇠 열기']);
     box.append(el('div', { class: 'row' }, [hintBtn, btn]));
-
     setTimeout(() => { if (S.mode === 'sim') input.focus(); }, 420);
 
     let fails = 0;
@@ -898,7 +939,7 @@ function openFinalLock() {
         vibrate([50, 70, 50]);
         box.classList.add('shake');
         setTimeout(() => box.classList.remove('shake'), 420);
-        toast(fails >= 2 ? '암호가 다릅니다. 조각의 순서를 확인하세요.' : '암호가 맞지 않습니다.', 'err');
+        toast(fails >= 2 ? '암호가 다릅니다. 단서를 다시 살펴보세요.' : '암호가 맞지 않습니다.', 'err');
         input.select();
       }
     }

@@ -84,6 +84,12 @@ html.a-fullscreen.ar-on body { background: transparent !important; }
 .scan-hint b { color: var(--neon); }
 .scan-hint[hidden] { display: none; }
 
+.locked-note {
+  text-align: center; padding: 22px 16px; margin-top: 8px;
+  background: var(--bg-2); border: 1px dashed var(--line);
+  border-radius: var(--r-lg); color: var(--txt);
+}
+
 /* 복귀 시각 안내 — 야외에서 화면만 봐도 알아채게 크게 */
 .return-bar {
   position: fixed; z-index: 150;
