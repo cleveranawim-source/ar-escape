@@ -13,7 +13,7 @@
    파일을 배포한 뒤 캐시를 강제로 비우려면 VERSION 을 올린다.
    ============================================================ */
 
-const VERSION = 'ar-escape-v12';
+const VERSION = 'ar-escape-v13';
 
 const SHELL = [
   './',

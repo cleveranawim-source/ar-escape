@@ -38,6 +38,12 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* hidden 속성은 브라우저 기본 스타일의 display:none 이라, 작성자 규칙이 display 를
+   정해 둔 요소에서는 그냥 무시된다. (.btn 은 display:inline-flex 이라 hidden 이 안 먹었고,
+   연습 모드 버튼이 감춰지지 않은 채 그대로 눌렸다.)
+   개별 규칙을 하나씩 붙이는 대신 전역으로 못박는다. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
