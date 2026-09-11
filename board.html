@@ -194,6 +194,34 @@
     </div>
   </div>
 
+  <!-- 공지 -->
+  <div class="card">
+    <div class="card-hd">
+      <h3>📢 공지 보내기</h3>
+      <span class="tiny dim">모든 기기에 25초 안에 도착합니다</span>
+    </div>
+
+    <label class="field" style="margin-bottom:10px">
+      <textarea id="f-notice" rows="2" maxlength="200" placeholder="예: 후관동 쪽은 공사 중이라 가지 마세요"></textarea>
+    </label>
+    <div class="row row-wrap">
+      <button class="btn btn-primary" id="btn-notice-send">📢 보내기</button>
+      <button class="btn btn-sm" data-notice="10분 남았습니다. 마무리해 주세요.">10분 남음</button>
+      <button class="btn btn-sm" data-notice="지금 교실로 돌아와 주세요.">복귀</button>
+      <button class="btn btn-sm" data-notice="다른 반 수업 중입니다. 조용히 이동해 주세요.">조용히</button>
+    </div>
+
+    <div id="notice-now" hidden style="margin-top:14px">
+      <div class="link-box" style="align-items:flex-start">
+        <div class="grow">
+          <div class="tiny dim" style="font-weight:800;margin-bottom:3px">보낸 공지 · <span id="notice-seen"></span></div>
+          <div id="notice-text" style="font-size:14px;white-space:pre-wrap"></div>
+        </div>
+        <button class="btn btn-sm btn-ghost nowrap" id="btn-notice-clear">내리기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 요약 -->
   <div class="tally">
     <div><div class="v" id="t-teams">0</div><div class="k">참여 모둠</div></div>

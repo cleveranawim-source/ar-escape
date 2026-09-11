@@ -6,7 +6,10 @@
    ============================================================ */
 
 import { $, el, toast, fmtClock, confirmDialog } from './util.js';
-import { DB_URL, liveEnabled, watchRoom, clearRoom, checkAccess, setReturnAt, fetchRoomMeta, serverNow } from './live.js';
+import {
+  DB_URL, liveEnabled, watchRoom, clearRoom, checkAccess,
+  setReturnAt, fetchRoomSettings, setNotice, serverNow,
+} from './live.js';
 
 const ROOM_KEY = 'ar-escape:board-room';
 const SRC_KEY = 'ar-escape:board-src';
@@ -50,12 +53,13 @@ async function connect(room) {
   }
   if (problem === 'network') { setConn('off', '네트워크에 연결할 수 없습니다'); return; }
   if (problem) { setConn('off', problem); return; }
-  fetchRoomMeta(room).then(m => { B.returnAt = Number(m?.returnAt) || null; renderReturn(); }).catch(() => {});
+  fetchRoomSettings(room).then(r => { B.returnAt = Number(r?.meta?.returnAt) || null; renderReturn(); }).catch(() => {});
 
   B.watcher = watchRoom(room, state => {
     B.state = state;
     const next = Number(state.meta?.returnAt) || null;
     if (next !== B.returnAt) { B.returnAt = next; renderReturn(); }
+    renderNotice();
     setConn('on', '연결됨');
     render();
   }, err => {
@@ -204,11 +208,42 @@ async function applyReturn(ts) {
   }
 }
 
+/* ============================================================
+   공지
+   ============================================================ */
+
+function renderNotice() {
+  const n = B.state.notice;
+  const on = !!(n && n.text);
+  $('#notice-now').hidden = !on;
+  if (!on) return;
+  $('#notice-text').textContent = n.text;
+
+  // 누가 봤는지. 밖에 흩어져 있으면 "다 읽었나" 가 제일 궁금하다.
+  const teams = Object.values(B.state.teams || {}).filter(t => !t.finished);
+  const seen = teams.filter(t => Number(t.noticeSeen) >= Number(n.at)).length;
+  $('#notice-seen').textContent = teams.length
+    ? `${seen} / ${teams.length}개 모둠 확인`
+    : '아직 참여한 모둠이 없습니다';
+}
+
+async function sendNotice(text) {
+  const room = $('#f-room').value.trim();
+  if (!room) { toast('방 코드를 먼저 입력하세요.', 'err'); return; }
+  try {
+    await setNotice(room, text);
+    toast(text?.trim() ? '공지를 보냈습니다. 25초 안에 모든 기기에 뜹니다.' : '공지를 내렸습니다.', 'ok', 4000);
+    if (text?.trim()) $('#f-notice').value = '';
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
 /* 경과 시간을 1초마다 다시 그린다 (진행 중인 팀이 있을 때만) */
 function startTick() {
   clearInterval(B.tickId);
   B.tickId = setInterval(() => {
-    if (Object.keys(B.state.teams || {}).length) render();
+    if (Object.keys(B.state.teams || {}).length) { render(); renderNotice(); }
     renderReturn();
   }, 1000);
 }
@@ -321,6 +356,14 @@ function boot() {
   $('#btn-return-minus').onclick = () => applyReturn((B.returnAt || serverNow()) - 5 * 60000);
   $('#btn-return-clear').onclick = () => applyReturn(null);
   renderReturn();
+
+  $('#btn-notice-send').onclick = () => {
+    const t = $('#f-notice').value;
+    if (!t.trim()) { toast('보낼 내용을 입력하세요.', 'err'); return; }
+    sendNotice(t);
+  };
+  document.querySelectorAll('[data-notice]').forEach(b => { b.onclick = () => sendNotice(b.dataset.notice); });
+  $('#btn-notice-clear').onclick = () => sendNotice('');
 
   connect($('#f-room').value.trim());
   startTick();

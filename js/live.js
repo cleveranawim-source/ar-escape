@@ -170,6 +170,36 @@ export async function setReturnAt(room, ts) {
   if (!res.ok) throw new Error(`복귀 시각을 저장하지 못했습니다 (${res.status})`);
 }
 
+/* ============================================================
+   공지 — 교사가 수업 중에 모든 기기로 한마디 보낸다
+   ============================================================ */
+
+/** 방 설정과 공지를 함께 읽는다. (teams 까지 받으면 무거우므로 따로 부른다) */
+export async function fetchRoomSettings(room) {
+  if (!DB_URL || !room) return null;
+  const base = roomBase(room);
+  const [metaRes, noticeRes] = await Promise.all([
+    fetch(`${base}/meta.json`, { cache: 'no-store' }),
+    fetch(`${base}/notice.json`, { cache: 'no-store' }),
+  ]);
+  const at = Date.parse(metaRes.headers.get('Date') || '');
+  if (Number.isFinite(at)) clockOffset = at - Date.now();
+  if (!metaRes.ok) throw new Error(String(metaRes.status));
+  return { meta: await metaRes.json(), notice: noticeRes.ok ? await noticeRes.json() : null };
+}
+
+/** 공지를 올린다. 빈 문자열이면 내린다. */
+export async function setNotice(room, text) {
+  const body = text?.trim() ? { text: text.trim().slice(0, 200), at: serverNow() } : null;
+  const res = await fetch(`${roomBase(room)}/notice.json`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`공지를 보내지 못했습니다 (${res.status})`);
+  return body;
+}
+
 /**
  * 접속 가능한지 미리 확인한다. EventSource 는 HTTP 상태를 알려주지 않아서,
  * 규칙이 잠겨 있을 때 "연결이 끊겼습니다" 로만 보이면 원인을 알 수 없다.

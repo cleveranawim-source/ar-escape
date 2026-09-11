@@ -10,9 +10,10 @@ import { fromFile, checkAnswer, answerText, computeFinalAnswer, colorHex, mindBu
 import {
   getScenario, recallLast, rememberTeam, recallTeam,
   loadProgress, saveProgress, clearProgress, addRecord, listRecords,
+  recallNoticeSeen, rememberNoticeSeen,
 } from './store.js';
 import { ArEngine, loadArRuntime, normalizeCameraError } from './ar.js';
-import { createReporter, fetchRoomMeta, serverNow } from './live.js';
+import { createReporter, fetchRoomSettings, serverNow } from './live.js';
 
 /* ============================================================
    상태
@@ -34,6 +35,7 @@ const S = {
   reporter: null,
   returnAt: null,     // 교사가 현황판에서 정한 복귀 시각 (절대 시각)
   returnWarned: {},   // 5분 전·2분 전·정각 알림을 한 번씩만
+  noticeSeen: 0,      // 이미 확인한 공지의 시각
   timeUpHandled: false,
 };
 
@@ -267,7 +269,8 @@ async function startGame(mode, resumeProgress = null) {
     meta: { title: S.scenario.title, total: totalCount(), bonusTotal: bonusTargets().length },
   });
   report({ current: null, tries: 0 });
-  pullRoomMeta();
+  S.noticeSeen = recallNoticeSeen(S.room);
+  pullRoomSettings();
 
   $('#screen-start').hidden = true;
   beep('found');
@@ -302,10 +305,11 @@ function report(extra = {}) {
 
 /* 교사가 현황판에서 정한 복귀 시각을 받아 온다.
    SSE 로 붙으면 태블릿 수만큼 동시 연결이 생기므로, 주기 신호에 얹어 가볍게 확인한다. */
-async function pullRoomMeta() {
+async function pullRoomSettings() {
   if (!S.room) return;
   try {
-    const meta = await fetchRoomMeta(S.room);
+    const { meta, notice } = await fetchRoomSettings(S.room);
+
     const next = Number(meta?.returnAt) || null;
     if (next !== S.returnAt) {
       const later = S.returnAt && next && next > S.returnAt;
@@ -313,7 +317,33 @@ async function pullRoomMeta() {
       S.returnWarned = {};
       if (next) toast(later ? '시간이 연장되었습니다.' : `복귀 시각이 정해졌습니다 — ${fmtHM(next)}`, 'ok', 3500);
     }
+
+    const at = Number(notice?.at) || 0;
+    if (at && at > S.noticeSeen && notice.text) showNotice(notice);
   } catch { /* 와이파이가 끊긴 동안은 마지막 값을 그대로 쓴다 */ }
+}
+
+/* 선생님 공지. 밖에 흩어져 있으니 소리·진동과 함께 화면을 덮어서 알린다.
+   같은 공지는 한 번만 뜨고, 새로고침해도 다시 뜨지 않는다. */
+function showNotice(notice) {
+  S.noticeSeen = notice.at;
+  rememberNoticeSeen(S.room, notice.at);
+  report({ noticeSeen: notice.at });
+
+  beep('found');
+  vibrate([140, 80, 140]);
+  modal((box, close) => {
+    box.append(
+      el('div', { style: { fontSize: '40px', textAlign: 'center' } }, ['📢']),
+      el('h3', { class: 'center', style: { margin: '4px 0 12px' } }, ['선생님 공지']),
+      el('p', {
+        style: { fontSize: '17px', lineHeight: '1.65', whiteSpace: 'pre-wrap', textAlign: 'center', margin: '0' },
+      }, [notice.text]),
+      el('button', {
+        class: 'btn btn-primary btn-block btn-lg', style: { marginTop: '20px' }, onclick: close,
+      }, ['확인']),
+    );
+  }, { closeOnBackdrop: false });
 }
 
 const fmtHM = ts => new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
@@ -963,7 +993,7 @@ function startTimer() {
     if (!S.progress?.finished && Date.now() - lastReportAt >= 25000) {
       lastReportAt = Date.now();
       report();
-      pullRoomMeta();
+      pullRoomSettings();
     }
     const rem = remainingMs();
     if (rem !== Infinity && rem <= 0 && !S.timeUpHandled) {

@@ -94,6 +94,17 @@ export function recallLast() {
   try { return localStorage.getItem(LAST_KEY); } catch { return null; }
 }
 
+/* 이미 확인한 공지 — 새로고침해도 같은 공지를 다시 띄우지 않게 */
+const NOTICE_KEY = room => `ar-escape:notice-seen:${room}`;
+
+export function recallNoticeSeen(room) {
+  try { return Number(localStorage.getItem(NOTICE_KEY(room))) || 0; } catch { return 0; }
+}
+
+export function rememberNoticeSeen(room, at) {
+  try { localStorage.setItem(NOTICE_KEY(room), String(at)); } catch { /* 무시 */ }
+}
+
 export function rememberTeam(name) {
   try { localStorage.setItem(TEAM_KEY, name); } catch { /* 무시 */ }
 }
