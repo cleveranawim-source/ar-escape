@@ -11,8 +11,9 @@ import {
   getScenario, recallLast, rememberTeam, recallTeam,
   loadProgress, saveProgress, clearProgress, addRecord, listRecords,
   recallNoticeSeen, rememberNoticeSeen,
+  recallReturnAt, rememberReturnAt,
 } from './store.js';
-import { ArEngine, loadArRuntime, normalizeCameraError } from './ar.js';
+import { ArEngine, loadArRuntime, warmArRuntime, normalizeCameraError } from './ar.js';
 import { createReporter, fetchRoomSettings, serverNow } from './live.js';
 
 /* ============================================================
@@ -146,6 +147,9 @@ function showStart() {
   $('#screen-load').hidden = true;
   $('#screen-start').hidden = false;
 
+  // 아직 교실 안, 와이파이가 멀쩡할 때 AR 엔진을 미리 받아 둔다.
+  if (sc.mind) warmArRuntime();
+
   $('#s-title').textContent = sc.title;
   $('#s-story').textContent = sc.story || '';
   $('#s-team').value = recallTeam();
@@ -270,6 +274,8 @@ async function startGame(mode, resumeProgress = null) {
   });
   report({ current: null, tries: 0 });
   S.noticeSeen = recallNoticeSeen(S.room);
+  // 와이파이가 죽어 있으면 서버에서 못 받아 오므로, 지난번에 받아 둔 값을 먼저 건다.
+  S.returnAt = recallReturnAt(S.room);
   pullRoomSettings();
 
   $('#screen-start').hidden = true;
@@ -314,6 +320,7 @@ async function pullRoomSettings() {
     if (next !== S.returnAt) {
       const later = S.returnAt && next && next > S.returnAt;
       S.returnAt = next;
+      rememberReturnAt(S.room, next);
       S.returnWarned = {};
       if (next) toast(later ? '시간이 연장되었습니다.' : `복귀 시각이 정해졌습니다 — ${fmtHM(next)}`, 'ok', 3500);
     }

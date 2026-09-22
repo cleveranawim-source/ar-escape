@@ -105,6 +105,21 @@ export function rememberNoticeSeen(room, at) {
   try { localStorage.setItem(NOTICE_KEY(room), String(at)); } catch { /* 무시 */ }
 }
 
+/* 복귀 시각 — 밖에 나가 있는 동안 튕겨서 다시 들어와도 남은 시간이 그대로 보여야 한다.
+   절대 시각이라 그대로 적어 두면 와이파이가 죽어 있어도 계산이 된다. */
+const RETURN_KEY = room => `ar-escape:return-at:${room}`;
+
+export function recallReturnAt(room) {
+  try { return Number(localStorage.getItem(RETURN_KEY(room))) || null; } catch { return null; }
+}
+
+export function rememberReturnAt(room, at) {
+  try {
+    if (at) localStorage.setItem(RETURN_KEY(room), String(at));
+    else localStorage.removeItem(RETURN_KEY(room));
+  } catch { /* 무시 */ }
+}
+
 export function rememberTeam(name) {
   try { localStorage.setItem(TEAM_KEY, name); } catch { /* 무시 */ }
 }

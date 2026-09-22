@@ -450,6 +450,14 @@ async function ensure(key, probe, label) {
   if (!probe()) throw new Error(`${label} 로드에 실패했습니다. 네트워크를 확인하세요.`);
 }
 
+/** 시작 화면에서 AR 엔진(약 3MB)을 미리 받아 둔다.
+    교실에서 주소를 열고 밖으로 나가는 활동이라, 「시작」을 누른 순간에 받기 시작하면
+    이미 늦다 — 그때는 운동장 구석에서 신호가 한 칸일 수도 있다.
+    서비스워커가 vendor/ 를 캐시 우선으로 잡고 있으므로 두 번째부터는 네트워크를 쓰지 않는다. */
+export function warmArRuntime() {
+  for (const url of Object.values(VENDOR)) fetch(url).catch(() => {});
+}
+
 /** 플레이용: A-Frame + MindAR-AFrame */
 export async function loadArRuntime() {
   await ensure('aframe', () => window.AFRAME, 'A-Frame');
