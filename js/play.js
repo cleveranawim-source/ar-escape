@@ -1270,7 +1270,9 @@ function renderResult(escaped, reason) {
     }, [
       el('div', { class: 'grow' }, [
         el('div', { style: { fontWeight: '700' } }, [`${rec ? '✅' : (t.bonus ? '🎁' : '❌')} ${t.name}${t.bonus ? ' (보너스)' : ''}`]),
-        el('div', { class: 'tiny dim' }, [`정답: ${answerText(t)}`]),
+        // 정답은 그 모둠이 푼 문제만 보여 준다. 못 푼 문제까지 보여 주면 시작하자마자 「게임 종료」 로
+        // 모든 답을 읽고 다른 모둠에 알려 주거나, 「다시 도전하기」 로 받아 적을 수 있었다.
+        rec ? el('div', { class: 'tiny dim' }, [`정답: ${answerText(t)}`]) : null,
       ]),
       el('div', { class: 'tiny dim nowrap' }, [rec ? `${rec.tries}회 시도${rec.hintUsed ? ' · 힌트' : ''}` : (t.bonus ? '미도전' : '미해결')]),
     ]));
