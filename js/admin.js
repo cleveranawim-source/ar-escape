@@ -90,6 +90,10 @@ async function importFile() {
   if (!f) return;
   try {
     const sc = fromFile(await readFileAsText(f));
+    // 배포용으로 정답을 봉인한 파일(scenarios/*.json)은 정답·해설이 없어 고칠 수 없다.
+    if (sc.targets.some(t => t.quiz?.sealed)) {
+      throw new Error('정답이 봉인된 배포용 파일이라 스튜디오에서 열 수 없습니다. 「내보내기」 로 받은 원본 파일을 가져오세요.');
+    }
     // 제목은 학생 시작 화면에 그대로 나간다. 예전에는 가져올 때마다 「(가져옴)」 을 붙여서
     // 「사라진 학교의 열쇠 (가져옴) (가져옴)」 같은 제목이 학생에게 보였다.
     // 같은 방이 이미 이 기기에 있을 때만 새 ID 와 「(사본)」 으로 구분한다.

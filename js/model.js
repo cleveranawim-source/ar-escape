@@ -31,6 +31,7 @@
    ============================================================ */
 
 import { uid, normalizeAnswer, base64ToBuf, bufToBase64 } from './util.js';
+import { openSealed } from './seal.js';
 
 export const SCHEMA_VERSION = 1;
 export const FILE_KIND = 'ar-escape-room';
@@ -110,7 +111,24 @@ export function computeFinalAnswer(scenario) {
   return (scenario.targets || []).filter(t => !t.bonus).map(t => (t.reward || '').trim()).join('');
 }
 
-/** 특정 문제의 정답 판정 */
+/** 정답이 봉인된 문제인가 (배포된 방 파일 — seal.js) */
+export const isSealed = target => !!target?.quiz?.sealed;
+export const scenarioSealed = sc => (sc?.targets || []).some(isSealed);
+
+/** 채점. 맞으면 { ok: true, answer(정답 표시), explain(해설) }.
+    봉인된 문제는 학생 답으로 만든 열쇠로 해설을 열고, 봉인 안 된 문제(스튜디오의 방)는 그대로 비교한다. */
+export async function verifyAnswer(target, input) {
+  const q = target.quiz;
+  if (q.sealed) {
+    const box = await openSealed(q, input);
+    return box ? { ok: true, answer: box.answer, explain: box.explain } : { ok: false };
+  }
+  return checkAnswer(target, input)
+    ? { ok: true, answer: answerText(target), explain: q.explain || '' }
+    : { ok: false };
+}
+
+/** 특정 문제의 정답 판정 — 봉인 안 된 문제용(스튜디오·검사). 학생 채점은 verifyAnswer. */
 export function checkAnswer(target, input) {
   const q = target.quiz;
   if (q.type === 'choice') return Number(input) === Number(q.answerIndex);
@@ -127,6 +145,7 @@ export function checkAnswer(target, input) {
 /** 정답 텍스트 (해설 화면용) */
 export function answerText(target) {
   const q = target.quiz;
+  if (q.sealed) return '';   // 봉인된 문제의 정답은 맞힌 순간 verifyAnswer 가 돌려준 것만 쓴다
   if (q.type === 'choice') return q.choices?.[q.answerIndex] ?? '';
   return String(q.answer || '').split('|')[0];
 }
@@ -148,7 +167,9 @@ export function validate(scenario) {
     const tag = `${i + 1}번 단서`;
     if (!t.thumb) errors.push(`${tag}: 인식할 이미지가 없습니다.`);
     if (!t.quiz.question?.trim()) errors.push(`${tag}: 문제 내용이 비어 있습니다.`);
-    if (t.quiz.type === 'choice') {
+    if (t.quiz.sealed) {
+      if (!t.quiz.sealed.keys?.length) errors.push(`${tag}: 봉인된 정답이 비어 있습니다.`);
+    } else if (t.quiz.type === 'choice') {
       const filled = t.quiz.choices.filter(c => c.trim()).length;
       if (filled < 2) errors.push(`${tag}: 객관식 보기를 2개 이상 입력하세요.`);
       if (!t.quiz.choices[t.quiz.answerIndex]?.trim()) errors.push(`${tag}: 정답으로 지정된 보기가 비어 있습니다.`);

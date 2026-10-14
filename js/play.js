@@ -6,7 +6,7 @@ import {
   $, el, toast, modal, confirmDialog, fmtClock, pickFile, readFileAsText,
   normalizeAnswer, beep, vibrate,
 } from './util.js';
-import { fromFile, checkAnswer, answerText, computeFinalAnswer, colorHex, mindBuffer } from './model.js';
+import { fromFile, verifyAnswer, answerText, computeFinalAnswer, colorHex, mindBuffer } from './model.js';
 import {
   getScenario, recallLast, rememberTeam, recallTeam,
   loadProgress, saveProgress, clearProgress, addRecord, listRecords,
@@ -626,6 +626,9 @@ function openSheet(build) {
 /* 정답이 「3,52」 처럼 쉼표로 여러 개면 학생에게 쓰는 법을 알려 준다.
    쉼표·띄어쓰기는 채점에서 지워지므로 「3, 52」 「3 52」 모두 맞는다. */
 function answerPlaceholder(q) {
+  // 봉인된 문제는 정답이 없으니 봉인할 때 남겨 둔 「답의 생김새」 로 안내한다
+  const f = q.sealed?.form;
+  if (f) return f.numeric ? `숫자 ${f.parts}개를 문제 순서대로, 쉼표로 이어 쓰세요 (예: 12, 34)` : `답 ${f.parts}개를 문제 순서대로, 쉼표로 이어 쓰세요`;
   const first = String(q.answer || '').split('|')[0];
   const parts = first.split(/[,，]/).map(x => x.trim()).filter(Boolean);
   if (parts.length < 2) return '정답을 입력하세요';
@@ -752,15 +755,27 @@ function openQuiz(index) {
       sheet().scrollTo({ top: sheet().scrollHeight, behavior: 'smooth' });
     }
 
-    function submit() {
-      if (state.answered) return;
+    async function submit() {
+      if (state.answered || state.checking) return;
       const value = getInput();
       if (value === null || value === undefined || String(value).trim() === '') return;
 
       state.tries++;
       report({ tries: state.tries });
-      if (checkAnswer(t, value)) {
+      // 봉인된 문제는 채점에 0.1~0.3초 걸린다 — 그 사이 두 번 눌리지 않게
+      state.checking = true;
+      submitBtn.disabled = true;
+      const prev = submitBtn.textContent;
+      submitBtn.textContent = '확인 중…';
+      let res;
+      try { res = await verifyAnswer(t, value); } finally {
+        state.checking = false;
+        submitBtn.textContent = prev;
+        submitBtn.disabled = false;
+      }
+      if (res.ok) {
         state.answered = true;
+        state.result = res;
         onCorrect(t, index, state, { body, actions, box });
       } else {
         beep('fail');
@@ -787,6 +802,8 @@ function onCorrect(t, index, state, ui) {
     at: Date.now(),
     tries: state.tries,
     hintUsed: state.hintShown && !state.hintAuto,
+    // 결과 화면의 「정답」 — 봉인된 방은 맞힌 순간에만 정답을 알 수 있으니 여기 적어 둔다
+    shown: state.result?.answer ?? answerText(t),
   };
   persist();
 
@@ -795,11 +812,12 @@ function onCorrect(t, index, state, ui) {
     state.btns.forEach(b => {
       b.disabled = true;
       b.classList.remove('sel');
-      if (Number(b.dataset.idx) === t.quiz.answerIndex) b.classList.add('right');
+      // 봉인된 문제는 정답 번호가 파일에 없다 — 방금 맞힌 그 보기가 정답이다
+      if (Number(b.dataset.idx) === (t.quiz.sealed ? state.selected : t.quiz.answerIndex)) b.classList.add('right');
     });
   } else if (state.input) {
     state.input.disabled = true;
-    state.input.value = answerText(t);
+    state.input.value = state.result?.answer ?? answerText(t);
   }
 
   ui.actions.remove();
@@ -822,8 +840,9 @@ function onCorrect(t, index, state, ui) {
     ]));
   }
 
-  if (t.quiz.explain?.trim()) {
-    after.append(el('div', { class: 'explainbox' }, [el('b', {}, ['📖 해설 ']), t.quiz.explain]));
+  const explain = state.result?.explain ?? t.quiz.explain;
+  if (explain?.trim()) {
+    after.append(el('div', { class: 'explainbox' }, [el('b', {}, ['📖 해설 ']), explain]));
   }
 
   const allDone = solvedCount() >= totalCount();
@@ -1272,7 +1291,7 @@ function renderResult(escaped, reason) {
         el('div', { style: { fontWeight: '700' } }, [`${rec ? '✅' : (t.bonus ? '🎁' : '❌')} ${t.name}${t.bonus ? ' (보너스)' : ''}`]),
         // 정답은 그 모둠이 푼 문제만 보여 준다. 못 푼 문제까지 보여 주면 시작하자마자 「게임 종료」 로
         // 모든 답을 읽고 다른 모둠에 알려 주거나, 「다시 도전하기」 로 받아 적을 수 있었다.
-        rec ? el('div', { class: 'tiny dim' }, [`정답: ${answerText(t)}`]) : null,
+        rec && (rec.shown ?? answerText(t)) ? el('div', { class: 'tiny dim' }, [`정답: ${rec.shown ?? answerText(t)}`]) : null,
       ]),
       el('div', { class: 'tiny dim nowrap' }, [rec ? `${rec.tries}회 시도${rec.hintUsed ? ' · 힌트' : ''}` : (t.bonus ? '미도전' : '미해결')]),
     ]));

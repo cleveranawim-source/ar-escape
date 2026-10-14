@@ -42,10 +42,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "3,52",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "lAE8dwMOH6E3+N3zTpzr9w==",
+            "keys": [
+              {
+                "c": "OX0c13N8oz6rVdlRW2PNUN0W2NcIlI9pJDbuSfUzkGU=",
+                "iv": "7tfsFLRdXYe7F3fG",
+                "ct": "X0gAg4bFQGuxvOhySx1lB8+WulnU8pBk42eONQlqSQTENqCSYPi+nUTXe7f/Dw=="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "5",
         "bonus": false
@@ -70,10 +86,31 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "1,70|①,70",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "r09zjw/GXGlscruVHauf8A==",
+            "keys": [
+              {
+                "c": "kPzxLgavDr9lAuYvo/7pkTpvTWgMRBDfsX8aMfurWwg=",
+                "iv": "Nj5yllIDFAP8XnV1",
+                "ct": "Qcz3zdbYXRqQA/TEYjxvdFuR20RDqvAlJv49ik8u7pHBjR+nWHJTsty0xY9/4g=="
+              },
+              {
+                "c": "ZBEsSv6RZEIInBoF0/HUOskqsxjdCxptmRJASldf0yw=",
+                "iv": "S/ZwiwH6irgoTb4j",
+                "ct": "tyxmMN0ZYqtH+ZAjoQ+lZcffI3EBskuYDirqINc1HNPaXSW1Yu1l0flDM2MweQ=="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "7",
         "bonus": false
@@ -98,10 +135,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "1,2",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "waDw+8ugeV3LNKs/DU3eSg==",
+            "keys": [
+              {
+                "c": "VtM7fLYirpWUFQdat3STpUuJd7Wo3754QDE6vnmJLX8=",
+                "iv": "lxjvP017t8eS+w4C",
+                "ct": "nlTJ6U3VyOWi/i263E6lesXQ91iWHZenXyWcQS1MFtP4NIh1iqr52StFNHAX"
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "1",
         "bonus": false
@@ -126,10 +179,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "8,5",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "f8bX+PH34bGsiWjKsL+SJA==",
+            "keys": [
+              {
+                "c": "G7fJJUWMTkD2WwCvy3wNdz7TjKLTHKZa35MK3MqEZTM=",
+                "iv": "jZM2I5GVMR+gNrkk",
+                "ct": "jou86vx15VJuALaMCEEVfhQM6gk/jwf5HFrQ8xIAJdqPhS8f38pTw9OxhTqI"
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "3",
         "bonus": false
@@ -154,10 +223,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "6,12",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "pWwU245/F8KjAwBuzb92iw==",
+            "keys": [
+              {
+                "c": "/CPvC482yW4vVim10qO/PzTMOF2/WI8H9oWi6qSCtHA=",
+                "iv": "OvsTlmsogqUyqsvI",
+                "ct": "oGYGYfQ2YmQ1QDarldkoiY/0R3C5Y0lY2UeNKDk4Zq9BnZqEzPWYVnYfbHQ1Mg=="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "2",
         "bonus": false
@@ -182,10 +267,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "40,18",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "ocY3ZZbQjEDb2Ct53LWM9g==",
+            "keys": [
+              {
+                "c": "inoTsQu4NemVdkbWt1WuJaaXrlV+hzoejR7bArumpC8=",
+                "iv": "/k2PE9Uc6tmy+vqE",
+                "ct": "NXDahQbw2qvESLSkMQTC+LYL+wMACMgqQCLwXORYCN/BqaeDqBD3mJPN0+fGAMc="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "2",
         "bonus": false
@@ -210,10 +311,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "27,9",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "CooFZV+foonRdZd07/cFkQ==",
+            "keys": [
+              {
+                "c": "P1xmY3/K5eSsWpOZvH1m1iGxrgvMoR2ROVPgtxZdyrU=",
+                "iv": "Ebf+JQfDJB9dPSdO",
+                "ct": "VU8muDgc3gWByoI8EVwpIPl1RySkUNDB1f3iD02Vsheqjk6lxt2TqdzzD8L8xg=="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "3",
         "bonus": false
@@ -238,10 +355,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "12,36",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "n8SMYRQJKHS9hNx3cL27ig==",
+            "keys": [
+              {
+                "c": "mcn7/gbtOdO5mnCHRyPCiAiNSnDT3p53Kr7xUEkQy8E=",
+                "iv": "0ddZQnfSNEBJj1Xy",
+                "ct": "b8RGHU+3QelXTghDRhOt/79g+EYA19jf/9RGoQuK8ldxhRLloGZ3s7TDipfHJrs="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "8",
         "bonus": false
@@ -266,10 +399,26 @@
             "",
             ""
           ],
-          "answerIndex": 0,
-          "answer": "75,3",
+          "answerIndex": -1,
+          "answer": "",
           "hint": "",
-          "explain": ""
+          "explain": "",
+          "sealed": {
+            "v": 1,
+            "it": 100000,
+            "salt": "0yLHQksT2+mhLJnPKK9rVg==",
+            "keys": [
+              {
+                "c": "zfSmLMVwJP+thwkgfJioQ0cyvFlej/qgarT2M7aI63Q=",
+                "iv": "T3FQvOT7tNmEl6LF",
+                "ct": "QSSIsEhNeMmiRZ0M/qxZG284PLGBILaFuy6kI8KvGicuf9S6G1KuJTk6/cdsMQ=="
+              }
+            ],
+            "form": {
+              "parts": 2,
+              "numeric": true
+            }
+          }
         },
         "reward": "5",
         "bonus": false
