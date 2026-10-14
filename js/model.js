@@ -159,8 +159,27 @@ export function validate(scenario) {
       errors.push(`${tag}: 열쇠 조각이 비어 있습니다. (최종 암호 자동 조합에 필요)`);
     }
     if (t.score && t.score < 34) warns.push(`${tag}: 이미지 인식 점수가 낮습니다(${t.score}점). 무늬가 많은 이미지를 권장합니다.`);
-    if (!t.quiz.hint?.trim()) warns.push(`${tag}: 힌트가 없습니다.`);
+    if (!t.quiz.hint?.trim()) warns.push(`${tag}: 힌트가 없습니다. (학생 화면에 「힌트 보기」 버튼이 나오지 않습니다)`);
+
+    // 「3|52」 — 문제 A·B 의 답을 | 로 이어 쓰면 하나만 맞혀도(또는 3 을 찍어도) 통과한다.
+    // 숫자 답 여러 개를 | 로 이은 건 거의 다 이 실수다.
+    if (t.quiz.type === 'short') {
+      const alts = String(t.quiz.answer || '').split('|').map(normalizeAnswer).filter(Boolean);
+      if (alts.length >= 2 && new Set(alts).size === alts.length && alts.every(a => /^-?[\d.]+$/.test(a))) {
+        warns.push(`${tag}: 정답 「${t.quiz.answer}」 — | 는 「또는」이라 ${alts.join(' 이나 ')} 하나만 써도 맞습니다. 둘 다 받으려면 쉼표로 쓰세요 (${alts.join(',')}).`);
+      }
+    }
   });
+
+  // 직접 입력한 최종 암호에 보너스 단서의 조각이 들어 있으면, 보너스를 건너뛴 모둠은 암호를 알 수 없다.
+  // (보너스는 탈출에 필요 없어서 그 조각 없이도 자물쇠 칸이 다 찬 것으로 본다)
+  const bonus = (scenario.targets || []).filter(t => t.bonus && t.reward?.trim());
+  if (scenario.finalLock?.mode === 'manual' && bonus.length) {
+    const all = normalizeAnswer((scenario.targets || []).map(t => t.reward || '').join(''));
+    if (normalizeAnswer(scenario.finalLock.answer) === all) {
+      warns.push(`최종 암호에 보너스 단서(${bonus.map(t => t.name).join(', ')})의 조각이 들어 있습니다. 보너스를 건너뛴 모둠은 암호를 완성할 수 없습니다 — 보너스 표시를 끄거나 암호를 고치세요.`);
+    }
+  }
 
   if (!scenario.mind) {
     warns.push('AR 타겟이 아직 컴파일되지 않았습니다. 카메라 없이 시뮬레이션 모드로만 플레이됩니다.');

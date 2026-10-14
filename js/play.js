@@ -32,7 +32,8 @@ const S = {
   pendingTimer: null,
   sheetGen: 0,        // 시트 세대 번호 — 닫힘 뒤 정리가 새로 열린 시트를 지우지 않게
   room: null,         // ?room= 이 있으면 교사 현황판으로 진행 상황을 보낸다
-  forcePractice: false,
+  local: false,       // 이 기기 제작 스튜디오에 저장된 방인가 (연습 모드는 이때만)
+  practiceOk: false,
   reporter: null,
   returnAt: null,     // 교사가 현황판에서 정한 복귀 시각 (절대 시각)
   returnWarned: {},   // 5분 전·2분 전·정각 알림을 한 번씩만
@@ -70,7 +71,6 @@ async function boot() {
   const src = params.get('src');
   const id = params.get('id');
   S.room = params.get('room');
-  S.forcePractice = params.get('practice') === '1';
 
   try {
     if (src) {
@@ -83,11 +83,13 @@ async function boot() {
       const sc = await getScenario(id);
       if (!sc) throw new Error('이 기기에 저장된 시나리오가 없습니다.');
       S.scenario = sc;
+      S.local = true;
     } else {
       const last = recallLast();
       const sc = last ? await getScenario(last) : null;
       if (!sc) { showNoScenario(); return; }
       S.scenario = sc;
+      S.local = true;
     }
   } catch (err) {
     showNoScenario(err.message);
@@ -183,10 +185,12 @@ function showStart() {
      카메라가 실제로 실패했을 때는 오류 창에서 그대로 제공하므로 구제책은 남는다. */
   // 기본은 잠금이다. 연습 모드는 마커 사진을 전부 펼쳐 보여주기 때문에
   // 야외 활동에서는 "어디로 가야 하는지" 를 통째로 알려주는 치트가 된다.
-  // 방 코드가 없는 주소를 그대로 공유해도 안전하도록, 켜는 쪽을 명시하게 한다.
+  // 그래서 연습 모드는 이 기기의 제작 스튜디오에 저장된 방(선생님 미리보기)에서만 연다.
+  // 주소로 여는 방(src=, 학생이 받는 주소)에서는 어떤 경우에도 열지 않는다 —
+  // 예전에는 주소에 &practice=1 을 붙이거나, 카메라 허용을 거절해 오류 창을 띄우면 들어갈 수 있었다.
   // (AR 이 아예 컴파일되지 않았다면 연습 모드 말고는 할 방법이 없으므로 예외)
-  const practiceOk = !sc.mind || S.forcePractice;
-  $('#s-sim').hidden = !practiceOk;
+  S.practiceOk = S.local || !sc.mind;
+  $('#s-sim').hidden = !S.practiceOk;
 
   /* 이어하기는 묻지 않고 자동이다.
      야외에서 튕겼다 들어온 학생에게 "이어할래?" 를 물으면, 급한 마음에
@@ -442,20 +446,26 @@ async function startAr() {
 
 function showCameraError(err) {
   modal((box, close) => {
-    box.append(
+    box.append(...[
       el('h3', {}, ['📷 카메라를 시작할 수 없습니다']),
       el('p', { class: 'muted' }, [err.message]),
+      // 학생 주소에서는 연습 모드로 빠져나갈 길을 두지 않는다. 허용 방법을 알려 주고 선생님을 부르게 한다.
+      S.practiceOk ? null : el('div', { class: 'hintbox', style: { marginTop: '12px', lineHeight: '1.7' } }, [
+        el('b', {}, ['카메라 허용하는 법 ']),
+        '주소창 왼쪽 아이콘을 눌러 카메라를 「허용」으로 바꾼 뒤 다시 시도하세요. ',
+        '아이패드는 설정 → Safari → 카메라 → 허용입니다. 그래도 안 되면 선생님께 알려 주세요.',
+      ]),
       el('div', { class: 'stack', style: { marginTop: '18px' } }, [
         el('button', {
           class: 'btn btn-primary btn-block',
           onclick: () => { close(); location.reload(); },
         }, ['다시 시도']),
-        el('button', {
+        S.practiceOk ? el('button', {
           class: 'btn btn-block',
           onclick: () => { close(); S.mode = 'sim'; startSim(); },
-        }, ['연습 모드로 계속하기']),
+        }, ['연습 모드로 계속하기']) : null,
       ]),
-    );
+    ].filter(Boolean));   // DOM append 는 null 을 글자로 붙인다
   }, { closeOnBackdrop: false });
 }
 
@@ -613,6 +623,17 @@ function openSheet(build) {
   requestAnimationFrame(() => s.classList.add('open'));
 }
 
+/* 정답이 「3,52」 처럼 쉼표로 여러 개면 학생에게 쓰는 법을 알려 준다.
+   쉼표·띄어쓰기는 채점에서 지워지므로 「3, 52」 「3 52」 모두 맞는다. */
+function answerPlaceholder(q) {
+  const first = String(q.answer || '').split('|')[0];
+  const parts = first.split(/[,，]/).map(x => x.trim()).filter(Boolean);
+  if (parts.length < 2) return '정답을 입력하세요';
+  return parts.every(x => /^-?[\d.]+$/.test(x))
+    ? `숫자 ${parts.length}개를 문제 순서대로, 쉼표로 이어 쓰세요 (예: 12, 34)`
+    : `답 ${parts.length}개를 문제 순서대로, 쉼표로 이어 쓰세요`;
+}
+
 function openQuiz(index) {
   const t = S.scenario.targets[index];
   if (!t) return;
@@ -676,7 +697,7 @@ function openQuiz(index) {
       const input = el('input', {
         type: 'text',
         inputmode: t.quiz.type === 'number' ? 'decimal' : 'text',
-        placeholder: t.quiz.type === 'number' ? '숫자로 답을 입력하세요' : '정답을 입력하세요',
+        placeholder: t.quiz.type === 'number' ? '숫자로 답을 입력하세요' : answerPlaceholder(t.quiz),
         autocomplete: 'off',
         onkeydown: e => { if (e.key === 'Enter') submit(); },
         oninput: () => { submitBtn.disabled = !input.value.trim(); },
@@ -702,7 +723,9 @@ function openQuiz(index) {
       onclick: () => submit(),
     }, ['제출']);
 
-    const actions = el('div', { class: 'row', style: { marginTop: '6px' } }, [hintBtn, submitBtn]);
+    // 힌트가 비어 있는 문제에서 누르면 벌점만 붙고 「준비된 힌트가 없습니다」 가 떴다.
+    const hasHint = !!t.quiz.hint?.trim();
+    const actions = el('div', { class: 'row', style: { marginTop: '6px' } }, [hasHint ? hintBtn : null, submitBtn]);
     box.append(actions);
 
     function showHint(auto = false) {
@@ -749,8 +772,8 @@ function openQuiz(index) {
           b?.classList.add('wrong');
           setTimeout(() => b?.classList.remove('wrong'), 700);
         }
-        toast(state.tries >= 3 ? '아직 아니에요. 힌트를 확인해 보세요.' : '틀렸습니다. 다시 생각해 보세요.', 'err');
-        if (state.tries >= 3) showHint(true);
+        toast(state.tries >= 3 && hasHint ? '아직 아니에요. 힌트를 확인해 보세요.' : '틀렸습니다. 다시 생각해 보세요.', 'err');
+        if (state.tries >= 3 && hasHint) showHint(true);
       }
     }
   });

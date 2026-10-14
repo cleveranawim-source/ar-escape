@@ -90,8 +90,13 @@ async function importFile() {
   if (!f) return;
   try {
     const sc = fromFile(await readFileAsText(f));
-    sc.id = uid('sc');           // 충돌 방지를 위해 새 ID 부여
-    sc.title = `${sc.title} (가져옴)`;
+    // 제목은 학생 시작 화면에 그대로 나간다. 예전에는 가져올 때마다 「(가져옴)」 을 붙여서
+    // 「사라진 학교의 열쇠 (가져옴) (가져옴)」 같은 제목이 학생에게 보였다.
+    // 같은 방이 이미 이 기기에 있을 때만 새 ID 와 「(사본)」 으로 구분한다.
+    if (!sc.id || await getScenario(sc.id)) {
+      sc.id = uid('sc');
+      sc.title = `${sc.title} (사본)`;
+    }
     await saveScenario(sc);
     await refreshList();
     await open(sc.id);
@@ -168,7 +173,7 @@ function headerCard(sc) {
       ]),
       el('div', { class: 'row row-wrap' }, [
         el('a', {
-          class: 'btn btn-sm', href: `play.html?id=${sc.id}&practice=1`, target: '_blank',
+          class: 'btn btn-sm', href: `play.html?id=${sc.id}`, target: '_blank',   // 이 기기에 저장된 방이라 연습 모드가 열린다
           onclick: () => { clearTimeout(A.saveTimer); flush(); },
         }, ['▶ 미리보기']),
         el('button', { class: 'btn btn-sm', onclick: exportScenario }, ['📤 내보내기']),
@@ -685,7 +690,7 @@ function quizEditor(t, redraw, syncHead) {
   } else {
     frag.append(el('label', { class: 'field' }, [
       el('span', { class: 'lb' }, [
-        q.type === 'number' ? '정답 (숫자)' : '정답 — 여러 개면 | 로 구분 (예: 광합성|photosynthesis)',
+        q.type === 'number' ? '정답 (숫자)' : '정답 — | 는 「또는」 입니다 (예: 광합성|photosynthesis → 둘 중 하나만 써도 정답)',
       ]),
       el('input', {
         type: 'text', value: q.answer,
@@ -695,7 +700,9 @@ function quizEditor(t, redraw, syncHead) {
     ]));
     if (q.type === 'short') {
       frag.append(el('p', { class: 'tiny dim', style: { marginTop: '-8px' } },
-        ['채점 시 공백·대소문자·문장부호는 무시됩니다.']));
+        ['채점 시 공백·대소문자·문장부호는 무시됩니다. ',
+         el('b', {}, ['한 단서에 문제가 두 개라 답을 둘 다 받으려면 쉼표']),
+         '로 쓰세요 (예: 3,52). 학생 답 칸에 「쉼표로 이어 쓰라」는 안내가 저절로 나옵니다.']));
     }
   }
 

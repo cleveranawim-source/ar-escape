@@ -33,7 +33,10 @@ function tx(mode, fn) {
     const store = t.objectStore(STORE);
     let result;
     try { result = fn(store); } catch (e) { rej(e); return; }
-    t.oncomplete = () => res(result?.result ?? result);
+    // 요청이면 그 결과를, 아니면 받은 값을 돌려준다. 예전의 `result?.result ?? result` 는
+    // 없는 id 를 get 하면 결과(undefined) 대신 요청 객체 자체를 돌려줘서, getScenario 가
+    // null 이 아니라 빈 시나리오를 내놓았다 — 「이미 있는 방인가」 를 물으면 늘 「있다」 였다.
+    t.oncomplete = () => res(result instanceof IDBRequest ? result.result : result);
     t.onerror = () => rej(t.error);
     t.onabort = () => rej(t.error);
   }));
