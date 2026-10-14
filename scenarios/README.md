@@ -14,6 +14,18 @@ play.html?src=scenarios/파일이름.json
 https://cleveranawim-source.github.io/ar-escape/play.html?src=scenarios/maum-room.json
 ```
 
+## 지금 올라가 있는 방
+
+방마다 파일이 따로입니다. **새 방은 새 파일로 올리고, 다른 방 파일을 덮어쓰지 않습니다.**
+
+| 파일 | 방 | 학생 주소 |
+|---|---|---|
+| `maum-room.json` | 마음의 방 (SEL, 단서 5 + 보너스 1) | `play.html?src=scenarios/maum-room.json&room=반이름` |
+| `lost-school-key.json` | 사라진 학교의 열쇠 (중1 도형, 단서 9) | `play.html?src=scenarios/lost-school-key.json&room=반이름` |
+
+현황판에서는 「시나리오 주소」 칸에 파일 경로를 넣으면 그 방의 학생 주소가 만들어집니다.
+한 반에서 두 방을 같이 돌릴 때는 방 코드를 다르게 쓰세요(예: `2-3`, `2-3수학`) — 같은 방 코드에 섞이면 현황판 제목이 하나로 나옵니다.
+
 ## 참고
 
 - 파일에는 문제·정답·AR 타겟 데이터가 모두 들어 있습니다. 이미지 개수에 따라 2~10MB 정도 됩니다.
