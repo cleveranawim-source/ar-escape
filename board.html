@@ -19,9 +19,13 @@
   .conn.on .dot2 { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
   .conn.off .dot2 { background: var(--danger); }
 
-  .tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 18px; }
   @media (max-width: 640px) { .tally { grid-template-columns: repeat(2, 1fr); } }
-  .tally div { background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: var(--r); padding: 12px; text-align: center; }
+  /* 휴대폰으로 밖에서 볼 때는 제작 쪽 버튼이 필요 없고, 좁은 폭에 끼워 넣으면 「현/황판」처럼 글자 중간이 끊긴다 */
+  .topbar .brand, .topbar .badge { white-space: nowrap; }
+  @media (max-width: 560px) { .topnav { display: none; } }
+  /* > 를 빼면 안의 숫자·이름 div 까지 저마다 테두리를 달고 상자 속 상자가 된다 */
+  .tally > div { background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: var(--r); padding: 12px; text-align: center; }
   .tally .v { font-family: var(--mono); font-size: 27px; font-weight: 900; line-height: 1.1; }
   .tally .k { font-size: 11.5px; color: var(--txt-3); margin-top: 3px; }
 
@@ -61,7 +65,7 @@
   <a class="brand" href="index.html" style="color:inherit;text-decoration:none">
     <span class="dot"></span> AR 방탈출 <span class="badge gray">실시간 현황판</span>
   </a>
-  <div class="row">
+  <div class="row topnav">
     <a class="btn btn-sm btn-ghost" href="lab.html">🔬 실물 테스트</a>
     <a class="btn btn-sm btn-primary" href="admin.html">제작 스튜디오 →</a>
   </div>

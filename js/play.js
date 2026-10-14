@@ -157,14 +157,16 @@ function showStart() {
   const meta = $('#s-meta');
   meta.innerHTML = '';
   const bonusN = sc.targets.filter(t => t.bonus).length;
-  meta.append(
+  // DOM 의 append 는 null 을 걸러 주지 않고 글자 "null" 로 붙인다 (el() 의 자식 배열과 다르다).
+  // 보너스가 없는 방이면 시작 화면에 「null」 이 떠 있었다.
+  meta.append(...[
     el('span', { class: 'badge' }, [`🔒 자물쇠 ${sc.targets.length - bonusN}개`]),
     bonusN ? el('span', { class: 'badge' }, [`🎁 보너스 ${bonusN}개`]) : null,
     el('span', { class: 'badge gold' }, [sc.timeLimitMin ? `⏳ 제한 ${sc.timeLimitMin}분` : '⏳ 시간 무제한']),
     sc.mind
       ? el('span', { class: 'badge ok' }, ['📷 AR 준비됨'])
       : el('span', { class: 'badge danger' }, ['📷 AR 타겟 없음']),
-  );
+  ].filter(Boolean));
 
   const goBtn = $('#s-go');
   goBtn.disabled = false;
@@ -502,6 +504,7 @@ function showFoundBar(index) {
     : (t.bonus ? '🎁 보너스 단서 — 탈출과는 별개인 덤 문제' : '튀어나온 이미지를 살펴본 뒤 문제를 여세요');
   $('#found-open').hidden = done;
   $('#found-bar').hidden = false;
+  document.body.classList.add('found-on');   // 복귀 시각 띠를 발견 띠 위로 올린다 (play.css)
   if (done) S.pendingTimer = setTimeout(hideFoundBar, 3000);
 }
 
@@ -509,6 +512,7 @@ function hideFoundBar() {
   clearTimeout(S.pendingTimer);
   S.pending = null;
   $('#found-bar').hidden = true;
+  document.body.classList.remove('found-on');
   if (S.mode === 'ar' && S.openTarget === null && !S.finalOpen) {
     $('#reticle').hidden = false;
     $('#scan-hint').hidden = false;
@@ -620,7 +624,11 @@ function openQuiz(index) {
       }, [t.ar.emoji]),
       el('div', { class: 'grow' }, [
         el('h3', { class: 'sheet-title' }, [t.name]),
-        el('div', { class: 'tiny dim' }, [`단서 ${index + 1} / ${totalCount()}`]),
+        // 보너스는 탈출 단서 수에 들지 않으므로 「단서 6 / 5」 처럼 보이면 안 된다.
+        // 번호도 전체 순서가 아니라 필수 단서 중 몇 번째인지로 센다 (보너스가 중간에 끼어도 맞게).
+        el('div', { class: 'tiny dim' }, [t.bonus
+          ? '🎁 보너스 단서 · 탈출과는 별개'
+          : `단서 ${requiredTargets().indexOf(t) + 1} / ${totalCount()}`]),
       ]),
       el('button', { class: 'icon-btn', onclick: closeSheet, 'aria-label': '닫기' }, ['✕']),
     ]));
@@ -1148,6 +1156,11 @@ function finishGame(escaped, reason = '') {
   report({ current: null, tries: 0, since: null, reason });
   stopTimer();
   closeSheet();
+
+  // 탈출한 뒤에도 공지는 계속 받는다. 먼저 끝낸 모둠은 밖에서 기다리는 중이라
+  // 「모두 교실로 돌아오세요」 같은 공지가 오히려 가장 필요하다.
+  // (결과 화면의 「다시 도전하기」 는 새로고침이라 이 타이머가 겹칠 일은 없다)
+  if (S.room) S.noticeTimer = setInterval(pullRoomSettings, 25000);
 
   if (escaped) {
     beep('win');

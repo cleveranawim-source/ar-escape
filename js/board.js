@@ -220,7 +220,9 @@ function renderNotice() {
   $('#notice-text').textContent = n.text;
 
   // 누가 봤는지. 밖에 흩어져 있으면 "다 읽었나" 가 제일 궁금하다.
-  const teams = Object.values(B.state.teams || {}).filter(t => !t.finished);
+  // 탈출한 모둠도 공지를 받으므로 함께 센다. 예전에는 빼고 셌더니, 모두 탈출한 뒤에는
+  // 「아직 참여한 모둠이 없습니다」 라고 엉뚱하게 나왔다.
+  const teams = Object.values(B.state.teams || {});
   const seen = teams.filter(t => Number(t.noticeSeen) >= Number(n.at)).length;
   $('#notice-seen').textContent = teams.length
     ? `${seen} / ${teams.length}개 모둠 확인`

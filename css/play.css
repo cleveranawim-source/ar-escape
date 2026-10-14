@@ -102,6 +102,9 @@ html.a-fullscreen.ar-on body { background: transparent !important; }
   font-size: 14.5px; font-weight: 800; max-width: 360px;
 }
 .return-bar[hidden] { display: none; }
+/* 단서를 찾아 아래에 발견 띠가 떠 있으면 그 위로 비켜선다.
+   그대로 두면 모든 화면 폭에서 발견 띠에 겹쳐, 휴대폰에서는 단서 이름을 가렸다. */
+body.found-on .return-bar { bottom: calc(104px + var(--safe-b)); }
 .return-bar.now {
   background: rgba(255, 95, 109, .2); border-color: rgba(255, 95, 109, .65); color: #ffc0c6;
   font-size: 17px; animation: returnPulse 1.4s ease-in-out infinite;
