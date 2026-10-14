@@ -42,6 +42,7 @@ const S = {
 
 const isSolved = t => !!S.progress?.solved[t.id];
 /* 보너스 단서는 탈출 조건·진행률·열쇠 보관함에서 뺀다. 덤으로 푸는 별개 문제이므로. */
+const RESUME_WITHIN_MS = 3 * 3600000;   // 이 시간 안에 같은 반에서 하던 진행만 이어 간다
 const requiredTargets = () => (S.scenario?.targets || []).filter(t => !t.bonus);
 const totalCount = () => requiredTargets().length;
 const solvedCount = () => requiredTargets().filter(isSolved).length;
@@ -152,7 +153,7 @@ function showStart() {
 
   $('#s-title').textContent = sc.title;
   $('#s-story').textContent = sc.story || '';
-  $('#s-team').value = recallTeam();
+  $('#s-team').value = recallTeam(S.room);
 
   const meta = $('#s-meta');
   meta.innerHTML = '';
@@ -192,7 +193,12 @@ function showStart() {
      맨 위 큰 버튼을 눌러 풀어 놓은 문제와 시간을 통째로 날린다.
      그래서 저장된 진행이 있으면 그냥 이어서 시작하고, 되돌릴 길만 열어 둔다. */
   const saved = loadProgress(sc.id);
-  const canResume = !!(saved && !saved.finished);
+  // 단, 같은 반(방 코드)에서 최근에 하던 것만 잇는다. 진행은 태블릿에 남으므로
+  // 다음 반이 그 태블릿을 받으면 앞 반이 풀다 만 진행이 「이어서 시작하기」 로 떠서
+  // 새 모둠이 남의 해제 수와 써 버린 시간을 물려받았다. 튕김은 몇 분 안에 다시 들어오니 3시간이면 넉넉하다.
+  const canResume = !!(saved && !saved.finished
+    && (saved.room ?? null) === (S.room ?? null)
+    && Date.now() - (saved.savedAt || 0) < RESUME_WITHIN_MS);
 
   if (canResume && saved.team) $('#s-team').value = saved.team;
   if (canResume && sc.mind) goBtn.textContent = '이어서 시작하기';
@@ -236,7 +242,7 @@ function showStart() {
 
 async function startGame(mode, resumeProgress = null) {
   const team = $('#s-team').value.trim() || '이름 없는 모둠';
-  rememberTeam(team);
+  rememberTeam(team, S.room);
 
   S.mode = mode;
   S.timeUpHandled = false;
@@ -390,6 +396,8 @@ function persist() {
   saveProgress(S.scenario.id, {
     ...S.progress,
     pausedElapsedMs: S.progress.finished ? 0 : elapsedMs(),
+    room: S.room,            // 이어하기는 같은 반에서만 (showStart)
+    savedAt: Date.now(),
   });
 }
 

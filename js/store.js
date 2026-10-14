@@ -120,12 +120,22 @@ export function rememberReturnAt(room, at) {
   } catch { /* 무시 */ }
 }
 
-export function rememberTeam(name) {
-  try { localStorage.setItem(TEAM_KEY, name); } catch { /* 무시 */ }
+/* 모둠 이름은 어느 반(방 코드)에서 쓴 것인지와 함께 적어 둔다.
+   태블릿을 다음 반이 이어 받으면 앞 반의 모둠 이름이 그대로 채워져 있었다. */
+const TEAM_ROOM_KEY = 'ar-escape:team-room';
+
+export function rememberTeam(name, room = '') {
+  try {
+    localStorage.setItem(TEAM_KEY, name);
+    localStorage.setItem(TEAM_ROOM_KEY, room || '');
+  } catch { /* 무시 */ }
 }
 
-export function recallTeam() {
-  try { return localStorage.getItem(TEAM_KEY) || ''; } catch { return ''; }
+export function recallTeam(room = '') {
+  try {
+    if ((localStorage.getItem(TEAM_ROOM_KEY) || '') !== (room || '')) return '';
+    return localStorage.getItem(TEAM_KEY) || '';
+  } catch { return ''; }
 }
 
 /* ---------------- 기록(리더보드) ---------------- */
